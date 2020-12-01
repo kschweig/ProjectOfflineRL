@@ -3,18 +3,19 @@ from abc import ABC, abstractmethod
 class Agent(ABC):
 
     def __init__(self,
-                 actionspec,
-                 obspec,
+                 actionspace,
+                 obspace,
                  directory,
                  offline):
-        self.actionspec = actionspec
-        self.obspec = obspec
+        self.actionspace = actionspace
+        self.obspace = obspace
         # all the hyperaparameters, model weights, lesson buffers, a Logger if 
         # needed, etc, should be stored in this
         # directory. Also wouldn't be bad to store some metadata like agent name
         # training session length, etc.
         self.agent_directory = directory
         self.inference = False
+        self.offline = offline
 
 
     @abstractmethod
@@ -41,6 +42,7 @@ class Agent(ABC):
         :param done: from env.step
         """
 
+    @abstractmethod
     def train(self):
         """
         Train the agent, either called from update method in online case

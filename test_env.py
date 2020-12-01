@@ -8,7 +8,7 @@ Just a view tests, to see if environment is usable and to check for some errors
 
 print (sys.version)
 print(torch.cuda.is_available())
-env = gym.make('BreakoutNoFrameskip-v0')
+env = gym.make('Breakout-v0')
 env.reset()
 print(env.action_space.n)
 print(env.unwrapped.get_action_meanings())
