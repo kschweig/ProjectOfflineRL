@@ -1,0 +1,25 @@
+name: offline_rl
+channels:
+  - conda-forge
+  - defaults
+  - pytorch
+dependencies:
+  - python=3.7
+  - pip
+  - pandas
+  - numpy
+  - scipy
+  - scikit-learn
+  - matplotlib
+  - seaborn
+  - plotly
+  - altair
+  - pytorch=1.7
+  - torchvision
+  - torchaudio
+  - cudatoolkit=10.1
+  - pip:
+      - cmake
+      - gym
+      - opencv-python
+  - atari_py
