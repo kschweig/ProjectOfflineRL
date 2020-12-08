@@ -1,10 +1,10 @@
 import sys
 import torch
-from source.utils.AtariWrapper import make_env
+from source.utils.atari_wrapper import make_env
 from source.utils.utils import load_config
 
 """
-Just a view tests, to see if environment is usable and to check for some errors
+Just a few tests, to see if environment is usable and to check for some errors
 """
 
 print (sys.version)
@@ -31,7 +31,6 @@ print(observation.shape, reward, done, info)
 
 env.close()
 
-
-#cuda?
+# cuda?
 print("cuda available:", torch.cuda.is_available())
 

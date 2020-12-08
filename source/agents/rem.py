@@ -1,4 +1,4 @@
-from source.agents.Agent import Agent
+from source.agents.agent import Agent
 
 
 class REM(Agent):

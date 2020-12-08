@@ -10,6 +10,7 @@ dependencies:
   - numpy
   - scipy
   - scikit-learn
+  - tqdm
   - matplotlib
   - seaborn
   - plotly

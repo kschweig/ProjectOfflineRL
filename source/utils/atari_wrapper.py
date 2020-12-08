@@ -77,11 +77,11 @@ class AtariPreprocessing(object):
         self.state_buffer[1:] = self.state_buffer[:-1]
         self.state_buffer[0] = self.adjust_frame()
 
-        done_float = float(done)
         if self.episode_length >= self._max_episode_steps:
             done = True
 
-        return self.state_buffer, total_reward, done, [np.clip(total_reward, -1, 1), done_float]
+        # clip reward to -1,1
+        return self.state_buffer, np.clip(total_reward, -1, 1), done, None
 
     def adjust_frame(self):
         """

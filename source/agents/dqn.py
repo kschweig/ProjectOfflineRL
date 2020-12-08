@@ -1,4 +1,4 @@
-from source.agents.Agent import Agent
+from source.agents.agent import Agent
 import os
 import torch
 import torch.nn as nn
@@ -76,11 +76,11 @@ class DQN(Agent):
         Q_loss = self.huber(current_Q, target_Q)
 
         # Optimize the Q
-        self.Q_optimizer.zero_grad()
+        self.optimizer.zero_grad()
         Q_loss.backward()
-        self.Q_optimizer.step()
+        self.optimizer.step()
 
-        # Update target network by polyak or full copy every X iterations.
+        # Update target network either continuously by soft update or full copy every X iterations.
         self.iterations += 1
         self.maybe_update_target()
 
@@ -128,5 +128,8 @@ class Network(nn.Module):
         )
 
     def forward(self, state):
+        if len(state.shape) == 3:
+            state = state.unsqueeze(dim=0)
+
         return self.net(state)
 
