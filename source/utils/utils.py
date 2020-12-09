@@ -1,4 +1,6 @@
 import os
+import numpy as np
+import torch.nn.functional as F
 
 
 class Configuration():
@@ -37,7 +39,7 @@ def load_config(file):
             elif splits[1].strip() == "True":
                 value = True
             elif splits[1].strip() == "False":
-                value = True
+                value = False
             # also allow scientific notation
             elif "." in splits[1] or "e" in splits[1]:
                 value = float(splits[1].strip())
@@ -58,3 +60,11 @@ class bcolors:
     ENDC = '\033[0m'
     BOLD = '\033[1m'
     UNDERLINE = '\033[4m'
+
+
+def entropy(values):
+    probs = F.softmax(values, dim=1)
+    entropy = 0.
+    for i in range(probs.shape[1]):
+        entropy -= probs[0,i].item() * np.log(probs[0,i].item())
+    return entropy

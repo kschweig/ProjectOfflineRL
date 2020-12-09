@@ -1,4 +1,5 @@
 from source.agents.agent import Agent
+from source.utils.utils import entropy
 import os
 import torch
 import torch.nn as nn
@@ -21,7 +22,7 @@ class DQN(Agent):
         self.config = config
 
         # Determine network type
-        self.Q = Network(self.frames, self.action_space).to(self.device)
+        self.Q = Network(self.frames, self.action_space, duelling=config.duelling).to(self.device)
         self.Q_target = copy.deepcopy(self.Q)
 
         # Determine optimizer
@@ -57,9 +58,12 @@ class DQN(Agent):
         if np.random.uniform(0, 1) > eps:
             with torch.no_grad():
                 state = torch.FloatTensor(state).to(self.device)
-                return int(self.Q(state).argmax(dim=1))
+                q_values = self.Q(state)
+                if eval:
+                    return int(q_values.argmax(dim=1)), entropy(q_values), float(q_values.max(dim=1)[0])
+                return int(q_values.argmax(dim=1)), np.nan, np.nan
         else:
-            return np.random.randint(self.action_space)
+            return np.random.randint(self.action_space), np.nan, np.nan
 
     def train(self, replay_buffer):
         # Sample replay buffer
@@ -96,7 +100,7 @@ class DQN(Agent):
         Hard update model parameters, "snap" target policy to local policy
         :return:
         """
-        if self.config.iterations % self.config.target_update_frequency == 0:
+        if self.iterations % self.config.target_update_freq == 0:
             self.Q_target.load_state_dict(self.Q.state_dict())
 
     def save_state(self) -> None:
@@ -111,25 +115,45 @@ class DQN(Agent):
 
 class Network(nn.Module):
 
-    def __init__(self, frames, num_actions):
+    def __init__(self, frames, num_actions, duelling=False):
         super(Network, self).__init__()
 
-        self.net = nn.Sequential(
+        self.duelling = duelling
+
+        self.conv = nn.Sequential(
             nn.Conv2d(in_channels=frames, out_channels=32, kernel_size=8, stride=4),
             nn.SELU(),
             nn.Conv2d(in_channels=32, out_channels=64, kernel_size=4, stride=2),
             nn.SELU(),
             nn.Conv2d(in_channels=64, out_channels=64, kernel_size=3, stride=1),
             nn.SELU(),
-            nn.Flatten(),
+            nn.Flatten()
+        )
+
+        self.advantage_stream= nn.Sequential(
             nn.Linear(in_features=7 * 7 * 64, out_features=512),
             nn.SELU(),
             nn.Linear(in_features=512, out_features=num_actions)
+        )
+
+        self.value_stream = nn.Sequential(
+            nn.Linear(in_features=7 * 7 * 64, out_features=512),
+            nn.SELU(),
+            nn.Linear(in_features=512, out_features=1)
         )
 
     def forward(self, state):
         if len(state.shape) == 3:
             state = state.unsqueeze(dim=0)
 
-        return self.net(state)
+        features = self.conv(state)
 
+        # if duelling, calculate value and advantage
+        if self.duelling:
+            value = self.value_stream(features)
+            advantages = self.advantage_stream(features)
+
+            return value + (advantages - advantages.mean())
+        # if not, simple calculate values via advantage stream
+        else:
+            return self.advantage_stream(features)

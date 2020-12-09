@@ -5,7 +5,8 @@ from source.agents.bcq import BCQ
 from source.agents.rem import REM
 from source.agents.qrdqn import QRDQN
 from source.agents.random import Random
-from source.utils.utils import load_config, Configuration, bcolors
+from source.utils.utils import load_config, bcolors
+from source.utils.logging import TrainLogger
 import os
 import argparse
 import torch
@@ -30,30 +31,34 @@ def online(env, action_space, frames, config, device):
     agent = DQN(action_space, frames, config, device)
     replay_buffer = ReplayBuffer(config.batch_size, config.buffer_size, device)
 
-    evaluations = []
-
     state = env.reset()
-    done = False
+    logger = TrainLogger(config)
     episode_timestep = 0
-    episode_timesteps = []
     episode_reward = 0
-    episode_rewards = []
     episode_num = 0
     episode_start = True
 
     # Interact with the environment for max_timesteps
-    for t in range(config.max_timesteps):
+    for t in tqdm(range(config.max_timesteps)):
 
         episode_timestep += 1
 
+        # every k episodes, policy gets evalutated
+        if (t+1) % config.eval_freq == 0:
+            eval_policy(t, agent, logger, 42, eval_episodes=10)
+
         # select action, random for start_timesteps.
-        if t < config.start_timesteps:
-            action = env.action_space.sample()
+        # first action of every episode must be fire
+        if episode_start:
+            action = 1
         else:
-            action = agent.policy(state, eval=False)
+            if t < config.start_timesteps:
+                action = env.action_space.sample()
+            else:
+                action, _, _ = agent.policy(state, eval=False)
 
         # perform action and log results
-        next_state, reward, done, info = env.step(action)
+        next_state, reward, done, _ = env.step(action)
 
         # raise episode reward
         episode_reward += reward
@@ -75,25 +80,63 @@ def online(env, action_space, frames, config, device):
 
         # clean up upon episode end
         if done:
-            # every xth episode report means of last episodes
-            if episode_num % 100 == 0 and episode_num > 0:
-                print(
-                    f"Total timesteps: {t + 1} ({round(t/config.max_timesteps * 100, 2)}%) Episode Num: {episode_num + 1} "
-                    f"Episode timesteps: {round(np.mean(episode_timesteps), 2)} Reward: {round(np.mean(episode_rewards), 2):.3f}")
-            # append for mean over last episodes
-            episode_rewards.append(episode_reward)
-            episode_timesteps.append(episode_timestep)
             # Reset environment
+            if episode_num % 100 == 0:
+                print(episode_num, episode_timestep, episode_reward)
             state, done = env.reset(), False
             episode_start = True
             episode_reward = 0
             episode_timestep = 0
             episode_num += 1
 
+    logger.plot()
+
 def offline(agents, env, action_space, frames, config, device):
     for agent in agents:
         for t in range(config.max_timesteps):
             pass
+
+
+# Runs policy for 10 episodes and returns average reward
+# A fixed seed is used for the eval environment
+def eval_policy(timestep, agent, logger, seed, eval_episodes=10):
+
+    eval_env = make_env(args.env, atari_pp)
+    eval_env.seed(seed + 100)
+
+    avg_reward = []
+    avg_length = []
+    avg_entropy = []
+    avg_values = []
+    for ep in range(eval_episodes):
+        state = eval_env.reset()
+        done = False
+        episode_reward = 0
+        episode_length = 1
+        while not done:
+            action, entropy, value = agent.policy(np.array(state), eval=True)
+            state, reward, done, lives = eval_env.step(action)
+            episode_reward += reward
+            avg_entropy.append(entropy)
+            avg_values.append(value)
+            episode_length += 1
+            #print(ep, episode_length, episode_reward, done, lives)
+
+        avg_reward.append(episode_reward)
+        avg_length.append(episode_length)
+
+    avg_reward = np.nanmean(avg_reward)
+    avg_length = np.nanmean(avg_length)
+    avg_entropy = np.nanmean(avg_entropy)
+    avg_values = np.nanmean(avg_values)
+
+    logger.append(avg_reward, avg_length, avg_entropy, avg_values)
+
+    print(
+        f"Total timesteps: {timestep + 1} ({round(timestep / config.max_timesteps * 100, 2)}%) "
+        f"Episode timesteps: {round(avg_length, 2)} Reward: {round(avg_reward, 1):.1f} "
+        f"Entropy: {round(avg_entropy, 4)} Value: {round(avg_values, 2)}"
+    )
 
 
 if __name__ == "__main__":

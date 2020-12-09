@@ -6,13 +6,12 @@ import cv2
 # Atari Preprocessing
 # Code is based on https://github.com/openai/gym/blob/master/gym/wrappers/atari_preprocessing.py
 # and this in turns on https://github.com/sfujim/BCQ/blob/master/discrete_BCQ/utils.py
-class AtariPreprocessing(object):
+class AtariPreprocessing(gym.Wrapper):
 
     def __init__(self, env, config):
+        super(AtariPreprocessing, self).__init__(env)
 
-        self.env = env.env
-        self.unwrapped = self.env.unwrapped     # compatibility
-        self.resume_on_life_loss = config.resume_on_life_loss
+        self.done_on_life_loss = config.done_on_life_loss
         self.frame_skip = config.frame_skip
         self.frame_size = config.frame_size
         self.reward_clipping = config.reward_clipping
@@ -39,6 +38,13 @@ class AtariPreprocessing(object):
         Resets environment
         """
         self.env.reset()
+        ## FireRestEnv
+        for _ in range(6):
+            _, _, done, _ = self.env.step(1)
+        if done:
+            self.env.reset()
+        ##
+
         self.lives = self.env.ale.lives()
         self.episode_length = 0
         self.env.ale.getScreenGrayscale(self.frame_buffer[0])
@@ -60,10 +66,21 @@ class AtariPreprocessing(object):
             _, reward, done, _ = self.env.step(action)
             total_reward += reward
 
-            if self.resume_on_life_loss:
+            if self.done_on_life_loss:
                 current_lives = self.env.ale.lives()
                 done = True if current_lives < self.lives else done
                 self.lives = current_lives
+
+            # if not done on life loss and still have lifes left, issue FIRE action to resume game (for example in breakout)
+            else:
+                if self.env.ale.lives() < self.lives:
+                    # make environment aware that loosing a life is bad
+                    total_reward = -100
+                    self.lives = self.env.ale.lives()
+                    if self.env.unwrapped.get_action_meanings()[1] == 'FIRE':
+                        # restart again
+                        for _ in range(6):
+                            _, reward, done, _ = self.env.step(1)
 
             if done:
                 break
@@ -81,7 +98,7 @@ class AtariPreprocessing(object):
             done = True
 
         # clip reward to -1,1
-        return self.state_buffer, np.clip(total_reward, -1, 1), done, None
+        return self.state_buffer, np.clip(total_reward, -1, 1), done, (self.env.ale.lives(), self.lives)
 
     def adjust_frame(self):
         """
@@ -106,19 +123,6 @@ class AtariPreprocessing(object):
         # return resized, maxed frame
         return np.array(image, dtype=np.uint8)
 
-    def render(self):
-        self.env.render()
-
-    def close(self):
-        self.env.close()
-
-    def seed(self, seed):
-        """
-        Set environment seed
-        :param seed: Number to set env seed
-        """
-        self.env.seed(seed)
-
 
 def make_env(env_name, config):
     """
@@ -127,8 +131,10 @@ def make_env(env_name, config):
     :param config:
     :return: Wrapped Environment
     """
-    env = gym.make(env_name + "NoFrameskip-v0")
+
     # custom wrapper with standard atari preprocessing
+    assert not "NoFrameskip-v" in env_name, "Just pass game name without additional specifications like 'NoFrameskip-v0' which is added internally."
+    env = gym.make(env_name + "NoFrameskip-v0")
     env = AtariPreprocessing(env, config)
 
     return env

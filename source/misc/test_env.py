@@ -2,6 +2,7 @@ import sys
 import torch
 from source.utils.atari_wrapper import make_env
 from source.utils.utils import load_config
+import numpy as np
 
 """
 Just a few tests, to see if environment is usable and to check for some errors
@@ -20,9 +21,11 @@ print(env.observation_space.shape)
 print(env.unwrapped.get_action_meanings())
 
 
-for _ in range(1000):
+for i in range(300):
     env.render()
-    env.step(env.action_space.sample()) # take a random action
+    action = 0
+    state, r, done, lives = env.step(action) # take a random action
+    print(i, env.unwrapped.get_action_meanings()[action], r, done, lives)
 
 
 action = env.action_space.sample()
