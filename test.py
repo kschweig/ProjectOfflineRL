@@ -32,6 +32,8 @@ if __name__ == "__main__":
     torch.manual_seed(args.seed)
 
     config = load_config(args.config)
+    # set experiment
+    config.experiment = args.config
 
     # get device
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -47,6 +49,6 @@ if __name__ == "__main__":
     state, done = env.reset(), False
     while not done:
         env.render()
-        action = agent.policy(state, eval=True)
+        action, _, _ = agent.policy(state, eval=True)
         state, r, done, _ = env.step(action)
-        time.sleep(.1)
+        time.sleep(.03)

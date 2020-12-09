@@ -31,7 +31,7 @@ def online(agent, env, config, device):
     replay_buffer = ReplayBuffer(config.batch_size, config.buffer_size, device)
 
     state = env.reset()
-    logger = TrainLogger(config)
+    logger = TrainLogger(agent, config, True)
     episode_timestep = 0
     episode_reward = 0
     episode_num = 0
@@ -226,7 +226,8 @@ if __name__ == "__main__":
         #agents.append(QRDQN())
 
     if args.online:
-        online(env, action_space, frames, config, device)
+        agent = DQN(action_space, frames, config, device)
+        online(agent, env, config, device)
     elif args.offline:
         offline(agents, env, config, device)
     else:

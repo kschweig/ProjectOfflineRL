@@ -24,7 +24,7 @@ class TrainLogger():
         self.values = []
 
     def append(self, reward, episode_length, entropy, value):
-        self.timesteps.append((len(self.timesteps + 1) * self.config.eval_freq))
+        self.timesteps.append((len(self.timesteps) + 1) * self.config.eval_freq)
         self.reward_window.append(reward)
         self.rewards.append(np.mean(self.reward_window))
         self.episode_length_window.append(episode_length)
@@ -35,23 +35,23 @@ class TrainLogger():
         self.values.append(np.mean(self.value_window))
 
     def plot(self):
-        fig, axs = plt.subplots(2, 2)
+        fig, axs = plt.subplots(2, 2, figsize=(16,12))
 
-        axs[0,0].ylabel("Reward")
-        axs[0,0].xlabel("Time steps")
+        axs[0,0].set_ylabel("Reward")
+        axs[0,0].set_xlabel("Time steps")
         axs[0,0].plot(self.timesteps, self.rewards)
 
-        axs[0,1].ylabel("Episode Length")
-        axs[0,1].xlabel("Time steps")
+        axs[0,1].set_ylabel("Episode Length")
+        axs[0,1].set_xlabel("Time steps")
         axs[0,1].plot(self.timesteps, self.episode_lengths)
 
-        plt.ylabel("Entropy")
-        plt.xlabel("Time steps")
-        plt.plot(self.timesteps, self.entropies)
+        axs[1,0].set_ylabel("Entropy")
+        axs[1,0].set_xlabel("Time steps")
+        axs[1,0].plot(self.timesteps, self.entropies)
 
-        plt.ylabel("Estimated Value")
-        plt.xlabel("Time steps")
-        plt.plot(self.timesteps, self.values)
+        axs[1,1].set_ylabel("Estimated Value")
+        axs[1,1].set_xlabel("Time steps")
+        axs[1,1].plot(self.timesteps, self.values)
 
         # save and show
         fig.patch.set_alpha(0)
@@ -62,7 +62,7 @@ class TrainLogger():
 
     def save(self):
         mode = "online" if self.online else "offline"
-        with open(os.path.join("data", self.config.experiment, "logs", self.agent.get_name()+ "_" + mode + ".csv")) as f:
+        with open(os.path.join("data", self.config.experiment, "logs", self.agent.get_name()+ "_" + mode + ".csv"), "w") as f:
             f.write("timestep;reward;episode length;entropy;estimated value\n")
             for i in range(len(self.timesteps)):
                 f.write(f"{self.timesteps[i]};{self.rewards[i]};{self.episode_lengths[i]};{self.entropies[i]};{self.values}\n")
