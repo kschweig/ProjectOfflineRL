@@ -64,7 +64,4 @@ class bcolors:
 
 def entropy(values):
     probs = F.softmax(values, dim=1)
-    entropy = 0.
-    for i in range(probs.shape[1]):
-        entropy -= probs[0,i].item() * np.log(probs[0,i].item())
-    return entropy
+    return -np.sum(probs * np.log(probs))

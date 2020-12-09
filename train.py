@@ -15,7 +15,7 @@ import numpy as np
 from tqdm import tqdm
 
 
-def online(env, action_space, frames, config, device):
+def online(agent, env, config, device):
     """
     Train agent online on environment.
     TODO: create dataset
@@ -28,7 +28,6 @@ def online(env, action_space, frames, config, device):
     """
 
     # create agent and replay buffer
-    agent = DQN(action_space, frames, config, device)
     replay_buffer = ReplayBuffer(config.batch_size, config.buffer_size, device)
 
     state = env.reset()
@@ -43,7 +42,7 @@ def online(env, action_space, frames, config, device):
 
         episode_timestep += 1
 
-        # every k episodes, policy gets evalutated
+        # every k episodes, policy gets evaluated
         if (t+1) % config.eval_freq == 0:
             eval_policy(t, agent, logger, 42, eval_episodes=10)
 
@@ -82,19 +81,44 @@ def online(env, action_space, frames, config, device):
         if done:
             # Reset environment
             if episode_num % 100 == 0:
-                print(episode_num, episode_timestep, episode_reward)
+                pass
+                #print(episode_num, episode_timestep, episode_reward)
             state, done = env.reset(), False
             episode_start = True
             episode_reward = 0
             episode_timestep = 0
             episode_num += 1
 
-    logger.plot()
+    # once finished, safe behavioral policy
+    agent.save_state(online=True)
+    # save buffer, just for simplicity here
+    # replay_buffer.save()
 
-def offline(agents, env, action_space, frames, config, device):
+    logger.plot()
+    logger.save()
+
+
+def offline(agents, env, config, device):
+
+    replay_buffer = ReplayBuffer(config.batch_size, config.buffer_size, device)
+    # load dataset
+    # TODO: must be done in loop, always switching between datasets
+    replay_buffer.load()
+
     for agent in agents:
+
+        logger = TrainLogger(agent, config, online=False)
+
         for t in range(config.max_timesteps):
-            pass
+            state = env.reset()
+
+            # TODO: here switch between replay buffers
+
+            agent.train(replay_buffer)
+
+            # every k episodes, policy gets evaluated
+            if (t + 1) % config.eval_freq == 0:
+                eval_policy(t, agent, logger, 42, eval_episodes=10)
 
 
 # Runs policy for 10 episodes and returns average reward
@@ -140,7 +164,6 @@ def eval_policy(timestep, agent, logger, seed, eval_episodes=10):
 
 
 if __name__ == "__main__":
-
     # Load parameters
     parser = argparse.ArgumentParser()
     parser.add_argument("--env", default="Breakout")  # OpenAI gym environment name
@@ -189,10 +212,7 @@ if __name__ == "__main__":
     if not os.path.exists(os.path.join("data", config.experiment, "dataset")):
         os.makedirs(os.path.join("data", config.experiment, "dataset"))
 
-
     agents = []
-    if args.agent == "random" or args.agent == "all":
-        agents.append(Random())
     if args.agent == "dqn" or args.agent == "all":
         agents.append(DQN(action_space, frames, config, device))
     if args.agent == "bcq" or args.agent == "all":
@@ -205,23 +225,14 @@ if __name__ == "__main__":
         pass
         #agents.append(QRDQN())
 
-
-
     if args.online:
         online(env, action_space, frames, config, device)
     elif args.offline:
-        pass
+        offline(agents, env, config, device)
     else:
-        # TODO: first do online with dqn agent, then offline with all agents + behavioral
-        #online
-        online(env, action_space, frames, config, device)
+        # online is done by default by dqn, otherwise train with online extra
+        agent = DQN(action_space, frames, config, device)
+        online(agent, env, action_space, frames, config, device)
 
-        #offline
-        agents = []
-        agents.append(DQN(action_space, frames, config, device))
-        agents.append(BCQ())
-        agents.append(REM())
-        agents.append(QRDQN())
-        agents.append(Random())
-
-        pass
+        # offline is done with all given agents
+        offline(agents, env, config, device)

@@ -23,7 +23,7 @@ print(env.unwrapped.get_action_meanings())
 
 for i in range(300):
     env.render()
-    action = 0
+    action = env.action_space.sample()
     state, r, done, lives = env.step(action) # take a random action
     print(i, env.unwrapped.get_action_meanings()[action], r, done, lives)
 
@@ -36,4 +36,8 @@ env.close()
 
 # cuda?
 print("cuda available:", torch.cuda.is_available())
+
+
+config = load_config("experiment")
+
 

@@ -1,12 +1,18 @@
 from collections import deque
+import os
 import numpy as np
 import matplotlib.pyplot as plt
 
 
 class TrainLogger():
 
-    def __init__(self, config):
+    def __init__(self, agent, config, online):
+        self.agent = agent
         self.config = config
+        self.online = online
+
+        # timestep
+        self.timesteps = []
         # sliding window of 5
         self.reward_window = deque(maxlen=config.window)
         self.rewards = []
@@ -18,6 +24,7 @@ class TrainLogger():
         self.values = []
 
     def append(self, reward, episode_length, entropy, value):
+        self.timesteps.append((len(self.timesteps + 1) * self.config.eval_freq))
         self.reward_window.append(reward)
         self.rewards.append(np.mean(self.reward_window))
         self.episode_length_window.append(episode_length)
@@ -28,26 +35,35 @@ class TrainLogger():
         self.values.append(np.mean(self.value_window))
 
     def plot(self):
-        plt.figure(figsize=(8,6))
-        plt.ylabel("Reward")
-        plt.xlabel("Time steps")
-        plt.plot(np.linspace(0, self.config.max_timesteps, len(self.rewards)), self.rewards)
-        plt.show()
+        fig, axs = plt.subplots(2, 2)
 
-        plt.figure(figsize=(8, 6))
-        plt.ylabel("Episode Length")
-        plt.xlabel("Time steps")
-        plt.plot(np.linspace(0, self.config.max_timesteps, len(self.episode_lengths)), self.episode_lengths)
-        plt.show()
+        axs[0,0].ylabel("Reward")
+        axs[0,0].xlabel("Time steps")
+        axs[0,0].plot(self.timesteps, self.rewards)
 
-        plt.figure(figsize=(8, 6))
+        axs[0,1].ylabel("Episode Length")
+        axs[0,1].xlabel("Time steps")
+        axs[0,1].plot(self.timesteps, self.episode_lengths)
+
         plt.ylabel("Entropy")
         plt.xlabel("Time steps")
-        plt.plot(np.linspace(0, self.config.max_timesteps, len(self.entropies)), self.entropies)
-        plt.show()
+        plt.plot(self.timesteps, self.entropies)
 
-        plt.figure(figsize=(8, 6))
         plt.ylabel("Estimated Value")
         plt.xlabel("Time steps")
-        plt.plot(np.linspace(0, self.config.max_timesteps, len(self.values)), self.values)
+        plt.plot(self.timesteps, self.values)
+
+        # save and show
+        fig.patch.set_alpha(0)
+        mode = "online" if self.online else "offline"
+        plt.savefig(os.path.join("results", self.config.experiment, self.agent.get_name()+ "_" + mode + ".png"),
+                    facecolor=fig.get_facecolor(), bbox_inches='tight')
         plt.show()
+
+    def save(self):
+        mode = "online" if self.online else "offline"
+        with open(os.path.join("data", self.config.experiment, "logs", self.agent.get_name()+ "_" + mode + ".csv")) as f:
+            f.write("timestep;reward;episode length;entropy;estimated value\n")
+            for i in range(len(self.timesteps)):
+                f.write(f"{self.timesteps[i]};{self.rewards[i]};{self.episode_lengths[i]};{self.entropies[i]};{self.values}\n")
+

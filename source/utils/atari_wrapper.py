@@ -5,7 +5,8 @@ import cv2
 
 # Atari Preprocessing
 # Code is based on https://github.com/openai/gym/blob/master/gym/wrappers/atari_preprocessing.py
-# and this in turns on https://github.com/sfujim/BCQ/blob/master/discrete_BCQ/utils.py
+# and in turns on https://github.com/sfujim/BCQ/blob/master/discrete_BCQ/utils.py
+# main contribution is in handling resets and live losses with several 'FIRE' actions.
 class AtariPreprocessing(gym.Wrapper):
 
     def __init__(self, env, config):

@@ -103,14 +103,16 @@ class DQN(Agent):
         if self.iterations % self.config.target_update_freq == 0:
             self.Q_target.load_state_dict(self.Q.state_dict())
 
-    def save_state(self) -> None:
-        torch.save(self.Q.state_dict(), os.path.join("data", self.config.experiment, self.get_name() + "_Q"))
-        torch.save(self.Q_optimizer.state_dict(), os.path.join("data", self.config.experiment, self.get_name() + "_optimizer"))
+    def save_state(self, online):
+        mode = "online" if online else "offline"
+        torch.save(self.Q.state_dict(), os.path.join("data", self.config.experiment, "models", self.get_name() + "_" + mode + "_Q"))
+        torch.save(self.Q_optimizer.state_dict(), os.path.join("data", self.config.experiment, "models", self.get_name() + "_" + mode + "_optimizer"))
 
-    def load_state(self) -> None:
-        self.Q.load_state_dict(torch.load(os.path.join("data", self.config.experiment, self.get_name() + "_Q")))
+    def load_state(self, online):
+        mode = "online" if online else "offline"
+        self.Q.load_state_dict(torch.load(os.path.join("data", self.config.experiment, "models", self.get_name() + "_" + mode + "_Q")))
         self.Q_target = copy.deepcopy(self.Q)
-        self.Q_optimizer.load_state_dict(torch.load(os.path.join("data", self.config.experiment, self.get_name() + "_optimizer")))
+        self.Q_optimizer.load_state_dict(torch.load(os.path.join("data", self.config.experiment, "models", self.get_name() + "_" + mode + "_optimizer")))
 
 
 class Network(nn.Module):
