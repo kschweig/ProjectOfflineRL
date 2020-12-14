@@ -1,5 +1,5 @@
 from source.utils.atari_wrapper import make_env
-from source.utils.replay_buffer import ReplayBuffer
+from source.utils.replay_buffer import ReplayBuffer, DatasetGenerator
 from source.agents.dqn import DQN
 from source.agents.bcq import BCQ
 from source.agents.rem import REM
@@ -11,6 +11,7 @@ import os
 import argparse
 import torch
 import copy
+import math
 import numpy as np
 from tqdm import tqdm
 
@@ -28,13 +29,16 @@ def online(agent, params):
     """
 
     # create replay buffer
-    replay_buffer = ReplayBuffer(params.batch_size, params.buffer_size, params.device)
+    replay_buffer = ReplayBuffer(params)
 
     # create Environment
     env = make_env(params.env, params)
 
+    # helper to generate datasets
+    dataset = DatasetGenerator(params)
+
     state = env.reset()
-    logger = TrainLogger(agent, params, True)
+    logger = TrainLogger(agent, params, run=1, online=True)
     episode_timestep = 0
     episode_reward = 0
     episode_num = 0
@@ -89,36 +93,50 @@ def online(agent, params):
             episode_timestep = 0
             episode_num += 1
 
+        # generate dataset for offline agents
+        steps = params.max_timesteps // params.policies
+        if (t+1) % steps == 0:
+            dataset.gen_data(steps, agent)
+
     # once finished, safe behavioral policy
-    agent.save_state(online=True)
+    agent.save_state(online=True, run=1)
 
     logger.plot()
     logger.save()
 
 
-def offline(agents, params):
+def offline(agent, params):
 
-    replay_buffer = ReplayBuffer(params.batch_size, params.buffer_size, params.device)
-    # load dataset
-    # TODO: must be done in loop, always switching between datasets
-    replay_buffer.load()
+    replay_buffer = ReplayBuffer(params)
+    # number of datasets is how often the buffer size can fit into the max_timesteps
+    num_ds = math.ceil(params.max_timesteps / params.buffer_size)
+    # path to datasets
+    path = os.path.join("data", params.experiment, "dataset", "ds")
 
-    env = make_env(params.env, params)
+    for run in range(params.runs):
+        # load dataset
+        replay_buffer.load(path, np.random.randint(num_ds))
 
-    for agent in agents:
+        logger = TrainLogger(agent, params, run=run, online=False)
 
-        logger = TrainLogger(agent, params, online=False)
+        for t in tqdm(range(params.max_timesteps)):
 
-        for t in range(params.max_timesteps):
-            state = env.reset()
-
-            # TODO: here switch between replay buffers
+            # switch between replay buffers
+            if (t+1) % (params.buffer_size // 8) == 0:
+                replay_buffer.load(path, np.random.randint(num_ds))
 
             agent.train(replay_buffer)
 
             # every k episodes, policy gets evaluated
             if (t + 1) % config.eval_freq == 0:
                 eval_policy(t, agent, logger, params, eval_episodes=10)
+
+        # once finished, safe obtained policy
+        agent.save_state(online=True, run=run)
+
+        logger.plot()
+        logger.save()
+
 
 
 # Runs policy for 10 episodes and returns average reward
@@ -214,31 +232,14 @@ if __name__ == "__main__":
         os.makedirs(os.path.join("data", config.experiment, "dataset"))
 
 
-    # gather agents for offline training if offline
-    if params.offline:
-        agents = []
-        if params.agent == "dqn" or params.agent == "all":
-            agents.append(DQN(params))
-        if params.agent == "bcq" or params.agent == "all":
-            pass
-            #agents.append(BCQ())
-        if params.agent == "rem" or params.agent == "all":
-            pass
-            #agents.append(REM())
-        if params.agent == "qrdqn" or params.agent == "all":
-            pass
-            #agents.append(QRDQN())
-
-
     # depending on arguments of call, train online, offline or both with the provided agents.
     # Always use DQN as online baseline.
     if params.online:
         online(DQN(params), params)
     elif params.offline:
-        offline(agents, params)
+        offline(DQN(params), params)
     else:
         # online is done by default by dqn, otherwise train with online extra
         online(DQN(params), params)
-
         # offline is done with all given agents
-        offline(agents, params)
+        offline(DQN(params), params)

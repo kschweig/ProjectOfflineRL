@@ -44,11 +44,12 @@ class DQN(Agent):
     def get_name(self):
         return "DQN"
 
-    def policy(self, state, eval=False):
-        if eval:
-            eps = self.params.eval_eps
-        else:
-            eps = max(self.slope * self.iterations + self.params.initial_eps, self.params.end_eps)
+    def policy(self, state, eval=False, eps = None):
+        if eps == None:
+            if eval:
+                eps = self.params.eval_eps
+            else:
+                eps = max(self.slope * self.iterations + self.params.initial_eps, self.params.end_eps)
 
         # epsilon greedy policy
         if np.random.uniform(0, 1) > eps:
@@ -99,16 +100,16 @@ class DQN(Agent):
         if self.iterations % self.params.target_update_freq == 0:
             self.Q_target.load_state_dict(self.Q.state_dict())
 
-    def save_state(self, online):
+    def save_state(self, online, run):
         mode = "online" if online else "offline"
-        torch.save(self.Q.state_dict(), os.path.join("data", self.params.experiment, "models", self.get_name() + "_" + mode + "_Q.pt"))
-        torch.save(self.optimizer.state_dict(), os.path.join("data", self.params.experiment, "models", self.get_name() + "_" + mode + "_optimizer.pt"))
+        torch.save(self.Q.state_dict(), os.path.join("data", self.params.experiment, "models", self.get_name() + "_" + mode + f"_{run}_Q.pt"))
+        torch.save(self.optimizer.state_dict(), os.path.join("data", self.params.experiment, "models", self.get_name() + "_" + mode + f"_{run}_optimizer.pt"))
 
-    def load_state(self, online):
+    def load_state(self, online, run):
         mode = "online" if online else "offline"
-        self.Q.load_state_dict(torch.load(os.path.join("data", self.params.experiment, "models", self.get_name() + "_" + mode + "_Q.pt")))
+        self.Q.load_state_dict(torch.load(os.path.join("data", self.params.experiment, "models", self.get_name() + "_" + mode + f"_{run}_Q.pt")))
         self.Q_target = copy.deepcopy(self.Q)
-        self.optimizer.load_state_dict(torch.load(os.path.join("data", self.params.experiment, "models", self.get_name() + "_" + mode + "_optimizer.pt")))
+        self.optimizer.load_state_dict(torch.load(os.path.join("data", self.params.experiment, "models", self.get_name() + "_" + mode + f"_{run}_optimizer.pt")))
 
 
 class Network(nn.Module):

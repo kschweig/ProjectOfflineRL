@@ -1,13 +1,14 @@
+import os
 import numpy as np
 import torch
 from source.utils.atari_wrapper import make_env
 
 
 class ReplayBuffer(object):
-    def __init__(self, batch_size, buffer_size, device):
-        self.batch_size = batch_size
-        self.max_size = int(buffer_size)
-        self.device = device
+    def __init__(self, params):
+        self.batch_size = params.batch_size
+        self.max_size = int(params.buffer_size)
+        self.device = params.device
 
         self.state_history = 4
 
@@ -22,6 +23,9 @@ class ReplayBuffer(object):
         # if episode terminates due to timelimit, the transition is not added to the buffer
         self.not_done = np.zeros((self.max_size, 1))
         self.first_timestep = np.zeros(self.max_size, dtype=np.uint8)
+
+    def full(self):
+        return self.idx == self.max_size - 1
 
     def add(self, state, action, next_state, reward, done, env_done, first_timestep):
         # If dones don't match, env has reset due to timelimit
@@ -116,3 +120,62 @@ class ReplayBuffer(object):
             self.state[current:end] = np.load(f"{save_folder}_state_n{number}_{end}.npy")
             current = end
             end = min(end + chunk, self.current_size + 1)
+
+
+
+class DatasetGenerator():
+    """
+    Utility class, that holds a replay buffer and handles dataset generation
+    by the online agent.
+    """
+
+    def __init__(self, params):
+        self.params = params
+        self.env = make_env(params.env, params)
+        self.replay_buffer = ReplayBuffer(params)
+        self.number = 0
+
+        self.done = False
+        self.reset()
+
+    def reset(self):
+        self.low_p = False
+        if np.random.uniform(0, 1) < self.params.low_noise_p:
+            self.low_p = True
+        self.state = self.env.reset()
+        self.episode_timestep = 0
+        self.episode_start = True
+
+    def gen_data(self, steps, agent):
+        for step in range(steps):
+            self.episode_timestep += 1
+
+            if self.done:
+                self.reset()
+
+            if self.episode_timestep >= self.env._max_episode_steps:
+                self.done = False
+
+            # if we are in low prob episode, generate
+            if self.low_p:
+                eps = self.params.eval_eps
+            else:
+                eps = self.params.gen_eps
+
+            # take action
+            action, _, _ = agent.policy(self.state, eval=True, eps=eps)
+
+            next_state, reward, self.done, _ = self.env.step(action)
+
+            self.replay_buffer.add(self.state, action, next_state, reward, float(self.done), self.done, self.episode_start)
+            self.episode_start = False
+
+            # if buffer is full, just save to disk and create a new one
+            if self.replay_buffer.full():
+                path = os.path.join("data", self.params.experiment, "dataset", "ds")
+                self.replay_buffer.save(path, self.number)
+                del self.replay_buffer
+                self.replay_buffer = ReplayBuffer(self.params)
+                self.number += 1
+
+

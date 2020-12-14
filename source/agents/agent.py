@@ -16,10 +16,9 @@ class Agent(ABC):
         """
 
     @abstractmethod
-    def policy(self, state):
+    def policy(self, state, eval=False, eps = None):
         """
         This function returns the action given the observation.
-        :param obs: observation received
         """
 
     @abstractmethod
@@ -30,13 +29,13 @@ class Agent(ABC):
         """
 
     @abstractmethod
-    def save_state(self, online) -> None:
+    def save_state(self, online, run) -> None:
         """
         Use this method to save the current state of your agent to the agent_directory.
         """
 
     @abstractmethod
-    def load_state(self, online) -> None:
+    def load_state(self, online, run) -> None:
         """ 
         Use this method to load the agent state from the self.agent_directory
         """

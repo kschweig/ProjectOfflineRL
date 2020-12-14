@@ -6,10 +6,11 @@ import matplotlib.pyplot as plt
 
 class TrainLogger():
 
-    def __init__(self, agent, params, online):
+    def __init__(self, agent, params, run, online):
         self.agent = agent
         self.params = params
         self.online = online
+        self.run = run
 
         # timestep
         self.timesteps = []
@@ -56,13 +57,13 @@ class TrainLogger():
         # save and show
         fig.patch.set_alpha(0)
         mode = "online" if self.online else "offline"
-        plt.savefig(os.path.join("results", self.params.experiment, self.agent.get_name()+ "_" + mode + ".png"),
+        plt.savefig(os.path.join("results", self.params.experiment, self.agent.get_name()+ "_" + mode + f"_{self.run}.png"),
                     facecolor=fig.get_facecolor(), bbox_inches='tight')
         plt.show()
 
     def save(self):
         mode = "online" if self.online else "offline"
-        with open(os.path.join("data", self.params.experiment, "logs", self.agent.get_name()+ "_" + mode + ".csv"), "w") as f:
+        with open(os.path.join("data", self.params.experiment, "logs", self.agent.get_name()+ "_" + mode + f"_{self.run}.csv"), "w") as f:
             f.write("timestep;reward;episode length;entropy;estimated value\n")
             for i in range(len(self.timesteps)):
                 f.write(f"{self.timesteps[i]};{self.rewards[i]};{self.episode_lengths[i]};{self.entropies[i]};{self.values[i]}\n")

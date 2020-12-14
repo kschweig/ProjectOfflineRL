@@ -44,7 +44,7 @@ if __name__ == "__main__":
 
     # for now, just show me the online agent
     agent = DQN(params)
-    agent.load_state(online=params.online)
+    agent.load_state(online=params.online, run=1)
 
     state, done = env.reset(), False
     while not done:
