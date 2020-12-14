@@ -6,25 +6,25 @@ import matplotlib.pyplot as plt
 
 class TrainLogger():
 
-    def __init__(self, agent, config, online):
+    def __init__(self, agent, params, online):
         self.agent = agent
-        self.config = config
+        self.params = params
         self.online = online
 
         # timestep
         self.timesteps = []
         # sliding window of 5
-        self.reward_window = deque(maxlen=config.window)
+        self.reward_window = deque(maxlen=params.window)
         self.rewards = []
-        self.episode_length_window = deque(maxlen=config.window)
+        self.episode_length_window = deque(maxlen=params.window)
         self.episode_lengths = []
-        self.entropy_window = deque(maxlen=config.window)
+        self.entropy_window = deque(maxlen=params.window)
         self.entropies = []
-        self.value_window = deque(maxlen=config.window)
+        self.value_window = deque(maxlen=params.window)
         self.values = []
 
     def append(self, reward, episode_length, entropy, value):
-        self.timesteps.append((len(self.timesteps) + 1) * self.config.eval_freq)
+        self.timesteps.append((len(self.timesteps) + 1) * self.params.eval_freq)
         self.reward_window.append(reward)
         self.rewards.append(np.mean(self.reward_window))
         self.episode_length_window.append(episode_length)
@@ -56,14 +56,13 @@ class TrainLogger():
         # save and show
         fig.patch.set_alpha(0)
         mode = "online" if self.online else "offline"
-        plt.savefig(os.path.join("results", self.config.experiment, self.agent.get_name()+ "_" + mode + ".png"),
+        plt.savefig(os.path.join("results", self.params.experiment, self.agent.get_name()+ "_" + mode + ".png"),
                     facecolor=fig.get_facecolor(), bbox_inches='tight')
         plt.show()
 
     def save(self):
         mode = "online" if self.online else "offline"
-        with open(os.path.join("data", self.config.experiment, "logs", self.agent.get_name()+ "_" + mode + ".csv"), "w") as f:
+        with open(os.path.join("data", self.params.experiment, "logs", self.agent.get_name()+ "_" + mode + ".csv"), "w") as f:
             f.write("timestep;reward;episode length;entropy;estimated value\n")
             for i in range(len(self.timesteps)):
-                f.write(f"{self.timesteps[i]};{self.rewards[i]};{self.episode_lengths[i]};{self.entropies[i]};{self.values}\n")
-
+                f.write(f"{self.timesteps[i]};{self.rewards[i]};{self.episode_lengths[i]};{self.entropies[i]};{self.values[i]}\n")

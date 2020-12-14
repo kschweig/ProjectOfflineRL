@@ -1,5 +1,6 @@
 import numpy as np
 import torch
+from source.utils.atari_wrapper import make_env
 
 
 class ReplayBuffer(object):
@@ -75,44 +76,43 @@ class ReplayBuffer(object):
             torch.FloatTensor(self.not_done[ind]).to(self.device)
         )
 
-    def save(self, save_folder, chunk=int(1e5)):
+    def save(self, save_folder, number, chunk=int(1e5)):
         """
         Save Transition Buffer to data folder
-        :param save_folder: folder to store data in
-        :param chunk: chunk buffer into pieces of this size for saving
         """
-        np.save(f"{save_folder}_action.npy", self.action[:self.current_size])
-        np.save(f"{save_folder}_reward.npy", self.reward[:self.current_size])
-        np.save(f"{save_folder}_not_done.npy", self.not_done[:self.current_size])
-        np.save(f"{save_folder}_first_timestep.npy", self.first_timestep[:self.current_size])
-        np.save(f"{save_folder}_replay_info.npy", [self.idx, chunk])
+        np.save(f"{save_folder}_action_n{number}.npy", self.action[:self.current_size])
+        np.save(f"{save_folder}_reward_n{number}.npy", self.reward[:self.current_size])
+        np.save(f"{save_folder}_not_done_n{number}.npy", self.not_done[:self.current_size])
+        np.save(f"{save_folder}_first_timestep_n{number}.npy", self.first_timestep[:self.current_size])
+        np.save(f"{save_folder}_replay_info_n{number}.npy", [self.idx, chunk])
 
         current = 0
         end = min(chunk, self.current_size + 1)
         while current < self.current_size + 1:
-            np.save(f"{save_folder}_state_{end}.npy", self.state[current:end])
+            np.save(f"{save_folder}_state_n{number}_{end}.npy", self.state[current:end])
             current = end
             end = min(end + chunk, self.current_size + 1)
 
-    def load(self, save_folder, size=-1):
-        reward_buffer = np.load(f"{save_folder}_reward.npy")
-        size = min(int(size), self.max_size) if size > 0 else self.max_size
-        self.current_size = min(reward_buffer.shape[0], size)
+    def load(self, save_folder, number, size=-1):
+        """
+        load Transition Buffer from data folder
+        """
+        reward_buffer = np.load(f"{save_folder}_reward_n{number}.npy")
 
         # Adjust current_size if we're using a custom size
         size = min(int(size), self.max_size) if size > 0 else self.max_size
         self.current_size = min(reward_buffer.shape[0], size)
 
-        self.action[:self.current_size] = np.load(f"{save_folder}_action.npy")[:self.current_size]
+        self.action[:self.current_size] = np.load(f"{save_folder}_action_n{number}.npy")[:self.current_size]
         self.reward[:self.current_size] = reward_buffer[:self.current_size]
-        self.not_done[:self.current_size] = np.load(f"{save_folder}_not_done.npy")[:self.current_size]
-        self.first_timestep[:self.current_size] = np.load(f"{save_folder}_first_timestep.npy")[:self.current_size]
+        self.not_done[:self.current_size] = np.load(f"{save_folder}_not_done_n{number}.npy")[:self.current_size]
+        self.first_timestep[:self.current_size] = np.load(f"{save_folder}_first_timestep_n{number}.npy")[:self.current_size]
 
-        self.idx, chunk = np.load(f"{save_folder}_replay_info.npy")
+        self.idx, chunk = np.load(f"{save_folder}_replay_info_n{number}.npy")
 
         current = 0
         end = min(chunk, self.current_size + 1)
         while current < self.current_size + 1:
-            self.state[current:end] = np.load(f"{save_folder}_state_{end}.npy")
+            self.state[current:end] = np.load(f"{save_folder}_state_n{number}_{end}.npy")
             current = end
             end = min(end + chunk, self.current_size + 1)

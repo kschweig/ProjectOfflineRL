@@ -1,7 +1,7 @@
 import time
 import torch
 import argparse
-from source.utils.utils import load_config, bcolors
+from source.utils.utils import load_config, bcolors, ParameterManager
 from source.utils.atari_wrapper import make_env
 from source.agents.dqn import DQN
 
@@ -25,26 +25,26 @@ if __name__ == "__main__":
 
 
     atari_pp = load_config("atari_preprocessing")
-    env = make_env(args.env, atari_pp)
+    config = load_config(args.config)
+    env = make_env(config.env, atari_pp)
 
     # set seeds
     env.seed(args.seed)
     torch.manual_seed(args.seed)
 
-    config = load_config(args.config)
-    # set experiment
-    config.experiment = args.config
+    # set experiment and action_space
+    config.set_value("experiment", args.config)
+    config.set_value("action_space", env.action_space.n)
 
     # get device
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    # define action space and framestack
-    action_space = env.action_space.n
-    frames = atari_pp.frame_stack
+    # unified access to all parameters
+    params = ParameterManager(config, atari_pp, args, device)
 
     # for now, just show me the online agent
-    agent = DQN(action_space, frames, config, device)
-    agent.load_state(online=args.online)
+    agent = DQN(params)
+    agent.load_state(online=params.online)
 
     state, done = env.reset(), False
     while not done:
@@ -52,3 +52,4 @@ if __name__ == "__main__":
         action, _, _ = agent.policy(state, eval=True)
         state, r, done, _ = env.step(action)
         time.sleep(.03)
+    env.close()

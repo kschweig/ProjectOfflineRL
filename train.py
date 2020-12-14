@@ -5,7 +5,7 @@ from source.agents.bcq import BCQ
 from source.agents.rem import REM
 from source.agents.qrdqn import QRDQN
 from source.agents.random import Random
-from source.utils.utils import load_config, bcolors
+from source.utils.utils import load_config, bcolors, ParameterManager
 from source.utils.logging import TrainLogger
 import os
 import argparse
@@ -15,7 +15,7 @@ import numpy as np
 from tqdm import tqdm
 
 
-def online(agent, env, config, device):
+def online(agent, params):
     """
     Train agent online on environment.
     TODO: create dataset
@@ -27,31 +27,34 @@ def online(agent, env, config, device):
     :return:
     """
 
-    # create agent and replay buffer
-    replay_buffer = ReplayBuffer(config.batch_size, config.buffer_size, device)
+    # create replay buffer
+    replay_buffer = ReplayBuffer(params.batch_size, params.buffer_size, params.device)
+
+    # create Environment
+    env = make_env(params.env, params)
 
     state = env.reset()
-    logger = TrainLogger(agent, config, True)
+    logger = TrainLogger(agent, params, True)
     episode_timestep = 0
     episode_reward = 0
     episode_num = 0
     episode_start = True
 
     # Interact with the environment for max_timesteps
-    for t in tqdm(range(config.max_timesteps)):
+    for t in tqdm(range(params.max_timesteps)):
 
         episode_timestep += 1
 
         # every k episodes, policy gets evaluated
-        if (t+1) % config.eval_freq == 0:
-            eval_policy(t, agent, logger, 42, eval_episodes=10)
+        if (t+1) % params.eval_freq == 0:
+            eval_policy(t, agent, logger, params, eval_episodes=10)
 
         # select action, random for start_timesteps.
         # first action of every episode must be fire
         if episode_start:
             action = 1
         else:
-            if t < config.start_timesteps:
+            if t < params.start_timesteps:
                 action = env.action_space.sample()
             else:
                 action, _, _ = agent.policy(state, eval=False)
@@ -74,7 +77,7 @@ def online(agent, env, config, device):
         state = copy.copy(next_state)
 
         # only update policy after initial filling of buffer and only every "train_freq"th interaction with the env
-        if t >= config.start_timesteps and (t + 1) % config.train_freq == 0:
+        if t >= params.start_timesteps and (t + 1) % params.train_freq == 0:
             agent.train(replay_buffer)
 
         # clean up upon episode end
@@ -91,25 +94,25 @@ def online(agent, env, config, device):
 
     # once finished, safe behavioral policy
     agent.save_state(online=True)
-    # save buffer, just for simplicity here
-    # replay_buffer.save()
 
     logger.plot()
     logger.save()
 
 
-def offline(agents, env, config, device):
+def offline(agents, params):
 
-    replay_buffer = ReplayBuffer(config.batch_size, config.buffer_size, device)
+    replay_buffer = ReplayBuffer(params.batch_size, params.buffer_size, params.device)
     # load dataset
     # TODO: must be done in loop, always switching between datasets
     replay_buffer.load()
 
+    env = make_env(params.env, params)
+
     for agent in agents:
 
-        logger = TrainLogger(agent, config, online=False)
+        logger = TrainLogger(agent, params, online=False)
 
-        for t in range(config.max_timesteps):
+        for t in range(params.max_timesteps):
             state = env.reset()
 
             # TODO: here switch between replay buffers
@@ -118,15 +121,15 @@ def offline(agents, env, config, device):
 
             # every k episodes, policy gets evaluated
             if (t + 1) % config.eval_freq == 0:
-                eval_policy(t, agent, logger, 42, eval_episodes=10)
+                eval_policy(t, agent, logger, params, eval_episodes=10)
 
 
 # Runs policy for 10 episodes and returns average reward
-# A fixed seed is used for the eval environment
-def eval_policy(timestep, agent, logger, seed, eval_episodes=10):
+def eval_policy(timestep, agent, logger, params, eval_episodes=10):
 
-    eval_env = make_env(args.env, atari_pp)
-    eval_env.seed(seed + 100)
+    eval_env = make_env(params.env, params)
+    # different seed for evaluation
+    eval_env.seed(params.seed + 100)
 
     avg_reward = []
     avg_length = []
@@ -163,39 +166,40 @@ def eval_policy(timestep, agent, logger, seed, eval_episodes=10):
     )
 
 
+def seed_all(environment, seed):
+    # set seeds
+    environment.seed(seed)
+    torch.manual_seed(seed)
+    np.random.seed(seed)
+
+
 if __name__ == "__main__":
     # Load parameters
     parser = argparse.ArgumentParser()
-    parser.add_argument("--env", default="Breakout")  # OpenAI gym environment name
     parser.add_argument("--seed", default=42, type=int)  # Sets Gym, PyTorch and Numpy seeds
     parser.add_argument("--config", default="experiment")  # experiment config to load
     parser.add_argument("--online", action="store_true") # Train online and generate buffer
     parser.add_argument("--offline", action="store_true")  # Train online and generate buffer
     parser.add_argument("--agent", default="dqn") # which agent should be trained? options: 'dqn', 'bcq', 'rem', 'qrdqn' or 'all'
+    parser.add_argument("--runs", default=3, type=int) # how many runs of offline agents (for creating std afterwards)
     args = parser.parse_args()
 
     if args.config == "experiment":
         print(bcolors.WARNING + "Warning: executing default experiment!" + bcolors.ENDC)
 
+    # load environment config
     atari_pp = load_config("atari_preprocessing")
-    env = make_env(args.env, atari_pp)
-
-    # set seeds
-    env.seed(args.seed)
-    torch.manual_seed(args.seed)
-    np.random.seed(args.seed)
-
     # get device
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
     # load experiment config
     config = load_config(args.config)
-    # set experiment
-    config.experiment = args.config
+    # set experiment and action_space
+    config.set_value("experiment", args.config)
+    config.set_value("action_space", make_env(config.env, atari_pp).action_space.n)
 
-    # define action space and framestack
-    action_space = env.action_space.n
-    frames = atari_pp.frame_stack
+    # unified access to all parameters
+    # this allows for streamlined function calls and class creations.
+    params = ParameterManager(config, atari_pp, args, device)
 
     # create folders to store
     if not os.path.exists(os.path.join("results", config.experiment)):
@@ -212,28 +216,32 @@ if __name__ == "__main__":
     if not os.path.exists(os.path.join("data", config.experiment, "dataset")):
         os.makedirs(os.path.join("data", config.experiment, "dataset"))
 
-    agents = []
-    if args.agent == "dqn" or args.agent == "all":
-        agents.append(DQN(action_space, frames, config, device))
-    if args.agent == "bcq" or args.agent == "all":
-        pass
-        #agents.append(BCQ())
-    if args.agent == "rem" or args.agent == "all":
-        pass
-        #agents.append(REM())
-    if args.agent == "qrdqn" or args.agent == "all":
-        pass
-        #agents.append(QRDQN())
 
-    if args.online:
-        agent = DQN(action_space, frames, config, device)
-        online(agent, env, config, device)
-    elif args.offline:
-        offline(agents, env, config, device)
+    # gather agents for offline training if offline
+    if params.offline:
+        agents = []
+        if params.agent == "dqn" or params.agent == "all":
+            agents.append(DQN(params))
+        if params.agent == "bcq" or params.agent == "all":
+            pass
+            #agents.append(BCQ())
+        if params.agent == "rem" or params.agent == "all":
+            pass
+            #agents.append(REM())
+        if params.agent == "qrdqn" or params.agent == "all":
+            pass
+            #agents.append(QRDQN())
+
+
+    # depending on arguments of call, train online, offline or both with the provided agents.
+    # Always use DQN as online baseline.
+    if params.online:
+        online(DQN(params), params)
+    elif params.offline:
+        offline(agents, params)
     else:
         # online is done by default by dqn, otherwise train with online extra
-        agent = DQN(action_space, frames, config, device)
-        online(agent, env, action_space, frames, config, device)
+        online(DQN(params), params)
 
         # offline is done with all given agents
-        offline(agents, env, config, device)
+        offline(agents, params)

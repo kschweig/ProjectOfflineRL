@@ -3,6 +3,36 @@ import numpy as np
 import torch.nn.functional as F
 
 
+class ParameterManager():
+    """
+    Its tedious to always send all parameters, unified interface
+    where we try to access the parameters
+    """
+    def __init__(self, config, atari_pp, args, device):
+        self.config = config
+        self.atari_pp = atari_pp
+        self.args = vars(args)
+        self.device = device
+
+    def __getattr__(self, key):
+
+        if key == "device":
+            return self.device
+
+        try:
+            value = self.config.get_value(key)
+        except:
+            try:
+                value = self.atari_pp.get_value(key)
+            except:
+                try:
+                    value = self.args[key]
+                except:
+                    raise ValueError(f"Key: {key} not found in any configuration!")
+
+        return value
+
+
 class Configuration():
 
     def __init__(self, file: str, dictionary: dict()):
@@ -10,7 +40,12 @@ class Configuration():
         self.dictionary = dictionary
 
     def __getattr__(self, key):
+        return self.get_value(key)
 
+    def set_value(self, key, value):
+        self.dictionary[str(key)] = value
+
+    def get_value(self, key):
         try:
             value = self.dictionary[str(key)]
         except:

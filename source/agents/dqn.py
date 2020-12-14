@@ -10,26 +10,22 @@ import numpy as np
 
 class DQN(Agent):
 
-    def __init__(self,
-                 action_space,
-                 frames,
-                 config,
-                 device):
+    def __init__(self, params):
         
-        super(DQN, self).__init__(action_space, frames)
+        super(DQN, self).__init__(params.action_space, params.frame_stack)
             
-        self.device = device
-        self.config = config
+        self.device = params.device
+        self.params = params
 
         # Determine network type
-        self.Q = Network(self.frames, self.action_space, duelling=config.duelling).to(self.device)
+        self.Q = Network(self.frames, self.action_space, duelling=params.duelling).to(self.device)
         self.Q_target = copy.deepcopy(self.Q)
 
         # Determine optimizer
-        if config.optimizer == "Adam":
-            self.optimizer = optim.Adam(self.Q.parameters(), lr=config.lr, eps=config.eps)
-        elif config.optimizer == "RMSProp":
-            self.optimizer = optim.RMSProp(self.Q.parameters(), lr=config.lr, eps=config.eps)
+        if params.optimizer == "Adam":
+            self.optimizer = optim.Adam(self.Q.parameters(), lr=params.lr, eps=params.eps)
+        elif params.optimizer == "RMSProp":
+            self.optimizer = optim.RMSProp(self.Q.parameters(), lr=params.lr, eps=params.eps)
         else:
             raise ValueError("Optimizer not implemented")
 
@@ -40,19 +36,19 @@ class DQN(Agent):
         self.iterations = 0
 
         # how to update target network
-        self.maybe_update_target = self.soft_target_update if config.soft_target_update else self.copy_target_update
+        self.maybe_update_target = self.soft_target_update if params.soft_target_update else self.copy_target_update
 
         # slope
-        self.slope = (self.config.end_eps - self.config.initial_eps) / self.config.eps_decay_period
+        self.slope = (self.params.end_eps - self.params.initial_eps) / self.params.eps_decay_period
 
     def get_name(self):
         return "DQN"
 
     def policy(self, state, eval=False):
         if eval:
-            eps = self.config.eval_eps
+            eps = self.params.eval_eps
         else:
-            eps = max(self.slope * self.iterations + self.config.initial_eps, self.config.end_eps)
+            eps = max(self.slope * self.iterations + self.params.initial_eps, self.params.end_eps)
 
         # epsilon greedy policy
         if np.random.uniform(0, 1) > eps:
@@ -71,7 +67,7 @@ class DQN(Agent):
 
         # Compute the target Q value
         with torch.no_grad():
-            target_Q = reward + done * self.config.discount * self.Q_target(next_state).max(1, keepdim=True)[0]
+            target_Q = reward + done * self.params.discount * self.Q_target(next_state).max(1, keepdim=True)[0]
 
         # Get current Q estimate
         current_Q = self.Q(state).gather(1, action)
@@ -93,26 +89,26 @@ class DQN(Agent):
         θ_target = τ*θ_local + (1 - τ)*θ_target
         """
         for target_param, param in zip(self.Q_target.parameters(), self.Q.parameters()):
-            target_param.data.copy_(self.config.tau * param.data + (1.0 - self.config.tau) * target_param.data)
+            target_param.data.copy_(self.params.tau * param.data + (1.0 - self.params.tau) * target_param.data)
 
     def copy_target_update(self):
         """
         Hard update model parameters, "snap" target policy to local policy
         :return:
         """
-        if self.iterations % self.config.target_update_freq == 0:
+        if self.iterations % self.params.target_update_freq == 0:
             self.Q_target.load_state_dict(self.Q.state_dict())
 
     def save_state(self, online):
         mode = "online" if online else "offline"
-        torch.save(self.Q.state_dict(), os.path.join("data", self.config.experiment, "models", self.get_name() + "_" + mode + "_Q"))
-        torch.save(self.optimizer.state_dict(), os.path.join("data", self.config.experiment, "models", self.get_name() + "_" + mode + "_optimizer"))
+        torch.save(self.Q.state_dict(), os.path.join("data", self.params.experiment, "models", self.get_name() + "_" + mode + "_Q.pt"))
+        torch.save(self.optimizer.state_dict(), os.path.join("data", self.params.experiment, "models", self.get_name() + "_" + mode + "_optimizer.pt"))
 
     def load_state(self, online):
         mode = "online" if online else "offline"
-        self.Q.load_state_dict(torch.load(os.path.join("data", self.config.experiment, "models", self.get_name() + "_" + mode + "_Q")))
+        self.Q.load_state_dict(torch.load(os.path.join("data", self.params.experiment, "models", self.get_name() + "_" + mode + "_Q.pt")))
         self.Q_target = copy.deepcopy(self.Q)
-        self.optimizer.load_state_dict(torch.load(os.path.join("data", self.config.experiment, "models", self.get_name() + "_" + mode + "_optimizer")))
+        self.optimizer.load_state_dict(torch.load(os.path.join("data", self.params.experiment, "models", self.get_name() + "_" + mode + "_optimizer.pt")))
 
 
 class Network(nn.Module):
