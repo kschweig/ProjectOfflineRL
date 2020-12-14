@@ -51,13 +51,10 @@ def online(agent, params):
 
         # select action, random for start_timesteps.
         # first action of every episode must be fire
-        if episode_start:
-            action = 1
+        if t < params.start_timesteps:
+            action = env.action_space.sample()
         else:
-            if t < params.start_timesteps:
-                action = env.action_space.sample()
-            else:
-                action, _, _ = agent.policy(state, eval=False)
+            action, _, _ = agent.policy(state, eval=False)
 
         # perform action and log results
         next_state, reward, done, _ = env.step(action)
