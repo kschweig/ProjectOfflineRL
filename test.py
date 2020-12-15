@@ -18,6 +18,7 @@ if __name__ == "__main__":
     parser.add_argument("--plot", action="store_true")  # plot performance of offline agents compared to online agent
     parser.add_argument("--online", action="store_true") # visualize the given agent online, if not specified, offline
     parser.add_argument("--agent", default="dqn") # which agent should be visualized? options: 'dqn', 'bcq', 'rem', 'qrdqn', 'behavioral' or 'all'
+    parser.add_argument("--run", default=1, type=int) # which run should be taken?
     args = parser.parse_args()
 
     if args.config == "experiment":
@@ -44,7 +45,7 @@ if __name__ == "__main__":
 
     # for now, just show me the online agent
     agent = DQN(params)
-    agent.load_state(online=params.online, run=1)
+    agent.load_state(online=params.online, run=0)
 
     state, done = env.reset(), False
     while not done:

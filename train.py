@@ -19,7 +19,6 @@ from tqdm import tqdm
 def online(agent, params):
     """
     Train agent online on environment.
-    TODO: create dataset
     :param env: Environment
     :param action_space: dim of action space
     :param frames: framestack, therefore first dim of state-space
@@ -105,7 +104,7 @@ def online(agent, params):
     logger.save()
 
 
-def offline(agent, params):
+def offline(params):
 
     replay_buffer = ReplayBuffer(params)
     # number of datasets is how often the buffer size can fit into the max_timesteps
@@ -113,7 +112,10 @@ def offline(agent, params):
     # path to datasets
     path = os.path.join("data", params.experiment, "dataset", "ds")
 
-    for run in range(params.runs):
+    for run in range(1, params.runs + 1):
+
+        agent = get_agent(params)
+
         # load dataset
         replay_buffer.load(path, np.random.randint(num_ds))
 
@@ -132,7 +134,7 @@ def offline(agent, params):
                 eval_policy(t, agent, logger, params, eval_episodes=10)
 
         # once finished, safe obtained policy
-        agent.save_state(online=True, run=run)
+        agent.save_state(online=False, run=run)
 
         logger.plot()
         logger.save()
@@ -181,6 +183,19 @@ def eval_policy(timestep, agent, logger, params, eval_episodes=10):
     )
 
 
+def get_agent(params):
+
+    if params.agent == "dqn":
+        return DQN(params)
+    elif params.agent == "bcq":
+        return BCQ(params)
+    elif params.agent == "rem":
+        return REM(params)
+    elif params.agent == "qrdqn":
+        return QRDQN(params)
+    raise ValueError(f"You must specify an offline agent to train from [dqn, bcq, rem, qrdqn], specified: {params.agent}")
+
+
 def seed_all(environment, seed):
     # set seeds
     environment.seed(seed)
@@ -195,7 +210,7 @@ if __name__ == "__main__":
     parser.add_argument("--config", default="experiment")  # experiment config to load
     parser.add_argument("--online", action="store_true") # Train online and generate buffer
     parser.add_argument("--offline", action="store_true")  # Train online and generate buffer
-    parser.add_argument("--agent", default="dqn") # which agent should be trained? options: 'dqn', 'bcq', 'rem', 'qrdqn' or 'all'
+    parser.add_argument("--agent", default="dqn") # which offline agent should be trained? options: 'dqn', 'bcq', 'rem' or 'qrdqn'
     parser.add_argument("--runs", default=3, type=int) # how many runs of offline agents (for creating std afterwards)
     args = parser.parse_args()
 
@@ -237,9 +252,9 @@ if __name__ == "__main__":
     if params.online:
         online(DQN(params), params)
     elif params.offline:
-        offline(DQN(params), params)
+        offline(params)
     else:
         # online is done by default by dqn, otherwise train with online extra
         online(DQN(params), params)
         # offline is done with all given agents
-        offline(DQN(params), params)
+        offline(params)
