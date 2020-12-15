@@ -16,7 +16,7 @@ import numpy as np
 from tqdm import tqdm
 
 
-def online(agent, params):
+def online(params):
     """
     Train agent online on environment.
     :param env: Environment
@@ -27,17 +27,19 @@ def online(agent, params):
     :return:
     """
 
+    # create agent
+    agent = get_agent(params)
     # create replay buffer
     replay_buffer = ReplayBuffer(params)
-
     # create Environment
     env = make_env(params.env, params)
-
     # helper to generate datasets
     dataset = DatasetGenerator(params)
-
-    state = env.reset()
+    # create logger
     logger = TrainLogger(agent, params, run=1, online=True)
+
+    # initialize
+    state = env.reset()
     episode_timestep = 0
     episode_reward = 0
     episode_num = 0
@@ -50,7 +52,11 @@ def online(agent, params):
 
         # every k episodes, policy gets evaluated
         if (t+1) % params.eval_freq == 0:
-            eval_policy(t, agent, logger, params, eval_episodes=10)
+            eval_reward = eval_policy(t, agent, logger, params, eval_episodes=10)
+            # save highest performing agent
+            if eval_reward > highest_reward:
+                highest_reward = eval_reward
+                agent.save_state(online=True, run=1)
 
         # select action, random for start_timesteps.
         # first action of every episode must be fire
@@ -97,20 +103,26 @@ def online(agent, params):
         if (t+1) % steps == 0:
             dataset.gen_data(steps, agent)
 
-    # once finished, safe behavioral policy
-    agent.save_state(online=True, run=1)
+    # once finished, safe final policy
+    agent.save_state(online=True, run=2)
 
     logger.plot()
     logger.save()
 
 
 def offline(params):
-
+    """
+    Train agent in offline environment for multiple runs
+    :param params:
+    :return:
+    """
     replay_buffer = ReplayBuffer(params)
     # number of datasets is how often the buffer size can fit into the max_timesteps
     num_ds = math.ceil(params.max_timesteps / params.buffer_size)
     # path to datasets
     path = os.path.join("data", params.experiment, "dataset", "ds")
+
+    highest_reward = 0
 
     for run in range(1, params.runs + 1):
 
@@ -131,10 +143,12 @@ def offline(params):
 
             # every k episodes, policy gets evaluated
             if (t + 1) % config.eval_freq == 0:
-                eval_policy(t, agent, logger, params, eval_episodes=10)
+                eval_reward = eval_policy(t, agent, logger, params, eval_episodes=10)
 
-        # once finished, safe obtained policy
-        agent.save_state(online=False, run=run)
+                # save highest performing agent
+                if eval_reward > highest_reward:
+                    highest_reward = eval_reward
+                    agent.save_state(online=False, run=run)
 
         logger.plot()
         logger.save()
@@ -181,6 +195,8 @@ def eval_policy(timestep, agent, logger, params, eval_episodes=10):
         f"Episode timesteps: {round(avg_length, 2)} Reward: {round(avg_reward, 1):.1f} "
         f"Entropy: {round(avg_entropy, 4)} Value: {round(avg_values, 2)}"
     )
+
+    return avg_reward
 
 
 def get_agent(params):
@@ -250,11 +266,11 @@ if __name__ == "__main__":
     # depending on arguments of call, train online, offline or both with the provided agents.
     # Always use DQN as online baseline.
     if params.online:
-        online(DQN(params), params)
+        online(params)
     elif params.offline:
         offline(params)
     else:
         # online is done by default by dqn, otherwise train with online extra
-        online(DQN(params), params)
+        online(params)
         # offline is done with all given agents
         offline(params)
