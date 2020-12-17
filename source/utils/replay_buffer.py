@@ -172,10 +172,17 @@ class DatasetGenerator():
 
             # if buffer is full, just save to disk and create a new one
             if self.replay_buffer.full():
-                path = os.path.join("data", self.params.experiment, "dataset", "ds")
-                self.replay_buffer.save(path, self.number)
-                del self.replay_buffer
-                self.replay_buffer = ReplayBuffer(self.params)
-                self.number += 1
+                self.save_and_reset()
 
+    def set_data(self, state, action, next_state, reward, done, episode_start):
+        self.replay_buffer.add(state, action, next_state, reward, float(done), done, episode_start)
+        # if buffer is full, just save to disk and create a new one
+        if self.replay_buffer.full():
+            self.save_and_reset()
 
+    def save_and_reset(self):
+        path = os.path.join("data", self.params.experiment, "dataset", "ds")
+        self.replay_buffer.save(path, self.number)
+        del self.replay_buffer
+        self.replay_buffer = ReplayBuffer(self.params)
+        self.number += 1

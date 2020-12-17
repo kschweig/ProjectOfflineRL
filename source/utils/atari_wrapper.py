@@ -76,7 +76,7 @@ class AtariPreprocessing(gym.Wrapper):
             else:
                 if self.env.ale.lives() < self.lives:
                     # make environment aware that loosing a life is bad
-                    total_reward = -100
+                    #total_reward = -100
                     self.lives = self.env.ale.lives()
                     if self.env.unwrapped.get_action_meanings()[1] == 'FIRE':
                         # restart again
@@ -137,5 +137,10 @@ def make_env(env_name, config):
     assert not "NoFrameskip-v" in env_name, "Just pass game name without additional specifications like 'NoFrameskip-v0' which is added internally."
     env = gym.make(env_name + "NoFrameskip-v0")
     env = AtariPreprocessing(env, config)
+    # try seeding env
+    try:
+        env.seed(config.seed)
+    except:
+        env.seed(42)
 
     return env

@@ -61,9 +61,12 @@ class TrainLogger():
                     facecolor=fig.get_facecolor(), bbox_inches='tight')
         plt.show()
 
-    def save(self):
+    def save(self, eval_reward, train_reward):
         mode = "online" if self.online else "offline"
         with open(os.path.join("data", self.params.experiment, "logs", self.agent.get_name()+ "_" + mode + f"_{self.run}.csv"), "w") as f:
             f.write("timestep;reward;episode length;entropy;estimated value\n")
             for i in range(len(self.timesteps)):
                 f.write(f"{self.timesteps[i]};{self.rewards[i]};{self.episode_lengths[i]};{self.entropies[i]};{self.values[i]}\n")
+        with open(os.path.join("data", self.params.experiment, "logs",
+                               self.agent.get_name() + "_" + mode + f"_{self.run}_info.csv"), "w") as f:
+            f.write(f"eval_reward;train_reward;{eval_reward};{train_reward}\n")

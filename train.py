@@ -5,6 +5,7 @@ from source.agents.bcq import BCQ
 from source.agents.rem import REM
 from source.agents.qrdqn import QRDQN
 from source.agents.random import Random
+from collections import deque
 from source.utils.utils import load_config, bcolors, ParameterManager
 from source.utils.logging import TrainLogger
 import os
@@ -44,18 +45,23 @@ def online(params):
     episode_reward = 0
     episode_num = 0
     episode_start = True
+    # keep highest rewards (eval and behavioral)
+    highest_reward_eval = 0
+    episode_rewards = deque(maxlen=params.eval_iters)
+    highest_reward_behavioral = 0
 
     # Interact with the environment for max_timesteps
     for t in tqdm(range(params.max_timesteps)):
 
         episode_timestep += 1
+        episode_start = False
 
         # every k episodes, policy gets evaluated
         if (t+1) % params.eval_freq == 0:
-            eval_reward = eval_policy(t, agent, logger, params, eval_episodes=10)
+            eval_reward = eval_policy(t, agent, logger, params, eval_episodes=params.eval_iters)
             # save highest performing agent
-            if eval_reward > highest_reward:
-                highest_reward = eval_reward
+            if eval_reward > highest_reward_eval:
+                highest_reward_eval = eval_reward
                 agent.save_state(online=True, run=1)
 
         # select action, random for start_timesteps.
@@ -77,7 +83,9 @@ def online(params):
 
         # Store data in replay buffer
         replay_buffer.add(state, action, next_state, reward, float(done), done, episode_start)
-        episode_start = False
+        # if we use setup from Agarwal et at. 2020 (Optimistic perspective) use training buffer as dataset
+        if params.use_train_buffer:
+            dataset.set_data(state, action, next_state, reward, done, episode_start)
 
         # state is next state
         state = copy.copy(next_state)
@@ -94,20 +102,24 @@ def online(params):
                 #print(episode_num, episode_timestep, episode_reward)
             state, done = env.reset(), False
             episode_start = True
+            # store in window of rewards
+            episode_rewards.append(episode_reward)
+            if np.mean(episode_rewards) > highest_reward_behavioral:
+                highest_reward_behavioral = np.mean(episode_rewards)
             episode_reward = 0
             episode_timestep = 0
             episode_num += 1
 
-        # generate dataset for offline agents
+        # generate dataset for offline agents, setup from Fujimoto et al. 2019 (Benchmarking Batch DRL)
         steps = params.max_timesteps // params.policies
-        if (t+1) % steps == 0:
+        if (t+1) % steps == 0 and not params.use_train_buffer:
             dataset.gen_data(steps, agent)
 
     # once finished, safe final policy
     agent.save_state(online=True, run=2)
 
     logger.plot()
-    logger.save()
+    logger.save(highest_reward_eval, highest_reward_behavioral)
 
 
 def offline(params):
@@ -143,7 +155,7 @@ def offline(params):
 
             # every k episodes, policy gets evaluated
             if (t + 1) % config.eval_freq == 0:
-                eval_reward = eval_policy(t, agent, logger, params, eval_episodes=10)
+                eval_reward = eval_policy(t, agent, logger, params, eval_episodes=params.eval_iters)
 
                 # save highest performing agent
                 if eval_reward > highest_reward:
@@ -151,8 +163,7 @@ def offline(params):
                     agent.save_state(online=False, run=run)
 
         logger.plot()
-        logger.save()
-
+        logger.save(highest_reward, 0)
 
 
 # Runs policy for 10 episodes and returns average reward
@@ -199,8 +210,15 @@ def eval_policy(timestep, agent, logger, params, eval_episodes=10):
     return avg_reward
 
 
-def get_agent(params):
+def eval_random(params):
+    agent = Random(params)
+    logger = TrainLogger(agent, params, run=1, online=True)
+    eval_reward = eval_policy(0, agent, logger, params, eval_episodes=params.eval_iters*10)
+    with open(os.path.join("data", params.experiment, "logs","Random_info.csv"), "w") as f:
+        f.write(f"env;reward;\n{params.env};{round(eval_reward,2)}\n")
 
+
+def get_agent(params):
     if params.agent == "dqn":
         return DQN(params)
     elif params.agent == "bcq":
@@ -210,13 +228,6 @@ def get_agent(params):
     elif params.agent == "qrdqn":
         return QRDQN(params)
     raise ValueError(f"You must specify an offline agent to train from [dqn, bcq, rem, qrdqn], specified: {params.agent}")
-
-
-def seed_all(environment, seed):
-    # set seeds
-    environment.seed(seed)
-    torch.manual_seed(seed)
-    np.random.seed(seed)
 
 
 if __name__ == "__main__":
@@ -232,6 +243,11 @@ if __name__ == "__main__":
 
     if args.config == "experiment":
         print(bcolors.WARNING + "Warning: executing default experiment!" + bcolors.ENDC)
+
+    # set seeds
+    torch.manual_seed(args.seed)
+    np.random.seed(args.seed)
+
 
     # load environment config
     atari_pp = load_config("atari_preprocessing")
@@ -266,11 +282,9 @@ if __name__ == "__main__":
     # depending on arguments of call, train online, offline or both with the provided agents.
     # Always use DQN as online baseline.
     if params.online:
+        eval_random(params)
         online(params)
     elif params.offline:
         offline(params)
     else:
-        # online is done by default by dqn, otherwise train with online extra
-        online(params)
-        # offline is done with all given agents
-        offline(params)
+        raise ValueError("You have to specify whether you want to train --online of --offline!")

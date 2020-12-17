@@ -15,6 +15,7 @@ if __name__ == "__main__":
     parser.add_argument("--seed", default=42, type=int)  # Sets Gym, PyTorch and Numpy seeds
     parser.add_argument("--config", default="experiment")  # experiment config to load
     parser.add_argument("--plot", action="store_true")  # plot performance of offline agents compared to online agent, otherwise render
+    parser.add_argument("--online", action="store_true")  # use online agent, otherwise offline
     parser.add_argument("--agent", default="dqn") # which agent should be visualized? options: 'dqn', 'bcq', 'rem', 'qrdqn', 'random' or 'behavioral' (online dqn)
     parser.add_argument("--run", default=1, type=int) # which run should be taken?
     args = parser.parse_args()
@@ -43,7 +44,7 @@ if __name__ == "__main__":
 
     # for now, just show me the online agent
     agent = DQN(params)
-    agent.load_state(online=params.online, run=0)
+    agent.load_state(online=params.online, run=params.run)
 
     state, done = env.reset(), False
     while not done:
