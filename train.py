@@ -63,6 +63,8 @@ def online(params):
             if eval_reward > highest_reward_eval:
                 highest_reward_eval = eval_reward
                 agent.save_state(online=True, run=1)
+            # log continuously
+            logger.save(highest_reward_eval, highest_reward_behavioral)
 
         # select action, random for start_timesteps.
         # first action of every episode must be fire
@@ -119,7 +121,6 @@ def online(params):
     agent.save_state(online=True, run=2)
 
     logger.plot()
-    logger.save(highest_reward_eval, highest_reward_behavioral)
 
 
 def offline(params):
@@ -162,8 +163,9 @@ def offline(params):
                     highest_reward = eval_reward
                     agent.save_state(online=False, run=run)
 
+                logger.save(highest_reward, 0)
+
         logger.plot()
-        logger.save(highest_reward, 0)
 
 
 # Runs policy for 10 episodes and returns average reward

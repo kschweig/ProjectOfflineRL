@@ -4,6 +4,7 @@ import argparse
 from source.utils.utils import load_config, bcolors, ParameterManager
 from source.utils.atari_wrapper import make_env
 from source.agents.dqn import DQN
+from source.agents.rem import REM
 
 
 # render game with different policies!
@@ -43,13 +44,19 @@ if __name__ == "__main__":
     params = ParameterManager(config, atari_pp, args, device)
 
     # for now, just show me the online agent
-    agent = DQN(params)
+    if params.agent == "dqn":
+        agent = DQN(params)
+    else:
+        agent = REM(params)
     agent.load_state(online=params.online, run=params.run)
 
     state, done = env.reset(), False
+    reward = 0
     while not done:
         env.render()
-        action, _, _ = agent.policy(state, eval=True)
+        action, _, _ = agent.policy(state, eval=False, eps=0)
         state, r, done, _ = env.step(action)
+        reward += r
         time.sleep(.03)
     env.close()
+    print("reward: ", reward)
