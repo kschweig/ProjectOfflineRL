@@ -4,6 +4,7 @@ from source.agents.dqn import DQN
 from source.agents.bcq import BCQ
 from source.agents.rem import REM
 from source.agents.qrdqn import QRDQN
+from source.agents.cqn import CQN
 from source.agents.random import Random
 from collections import deque
 from source.utils.utils import load_config, bcolors, ParameterManager
@@ -229,6 +230,8 @@ def get_agent(params):
         return REM(params)
     elif params.agent == "qrdqn":
         return QRDQN(params)
+    elif params.agent == "cqn":
+        return CQN(params)
     raise ValueError(f"You must specify an offline agent to train from [dqn, bcq, rem, qrdqn], specified: {params.agent}")
 
 
