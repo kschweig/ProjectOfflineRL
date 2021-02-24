@@ -1,8 +1,8 @@
 name: offline_rl
 channels:
+  - pytorch
   - conda-forge
   - defaults
-  - pytorch
 dependencies:
   - python=3.7
   - pip
@@ -15,6 +15,7 @@ dependencies:
   - seaborn
   - plotly
   - altair
+  - umap-learn
   - pytorch=1.7
   - torchvision
   - torchaudio

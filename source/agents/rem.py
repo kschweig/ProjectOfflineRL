@@ -128,14 +128,14 @@ class Network(nn.Module):
 
         self.net = nn.Sequential(
             nn.Conv2d(in_channels=frames, out_channels=32, kernel_size=8, stride=4),
-            nn.SELU(),
+            nn.ReLU(),
             nn.Conv2d(in_channels=32, out_channels=64, kernel_size=4, stride=2),
-            nn.SELU(),
+            nn.ReLU(),
             nn.Conv2d(in_channels=64, out_channels=64, kernel_size=3, stride=1),
-            nn.SELU(),
+            nn.ReLU(),
             nn.Flatten(),
             nn.Linear(in_features=7 * 7 * 64, out_features=512),
-            nn.SELU(),
+            nn.ReLU(),
             nn.Linear(in_features=512, out_features=num_actions*num_heads)
         )
 

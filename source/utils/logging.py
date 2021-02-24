@@ -57,7 +57,7 @@ class TrainLogger():
         # save and show
         fig.patch.set_alpha(0)
         mode = "online" if self.online else "offline"
-        plt.savefig(os.path.join("results", self.params.experiment, self.agent.get_name()+ "_" + mode + f"_{self.run}.png"),
+        plt.savefig(os.path.join("results", self.params.experiment, self.agent.get_name()+ "_" + mode + f"_{self.run}.pdf"),
                     facecolor=fig.get_facecolor(), bbox_inches='tight')
         plt.show()
 

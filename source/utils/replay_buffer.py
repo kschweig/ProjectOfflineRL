@@ -42,7 +42,9 @@ class ReplayBuffer(object):
         self.idx = (self.idx + 1) % self.max_size
         self.current_size = min(self.current_size + 1, self.max_size)
 
-    def sample(self):
+    def sample(self, batch_size=None):
+        if batch_size != None:
+            self.batch_size = batch_size
         ind = np.random.randint(0, self.current_size, size=self.batch_size)
 
         # Note + is concatenate here
@@ -122,11 +124,11 @@ class ReplayBuffer(object):
             end = min(end + chunk, self.current_size + 1)
 
 
-
 class DatasetGenerator():
     """
     Utility class, that holds a replay buffer and handles dataset generation
-    by the online agent.
+    by the online agent. Not most efficient way, better would be to store as hdf5,
+    but there is quite some overhead to safe datasets as efficient then.
     """
 
     def __init__(self, params):
