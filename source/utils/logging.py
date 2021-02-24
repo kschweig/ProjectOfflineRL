@@ -59,7 +59,6 @@ class TrainLogger():
         mode = "online" if self.online else "offline"
         plt.savefig(os.path.join("results", self.params.experiment, self.agent.get_name()+ "_" + mode + f"_{self.run}.pdf"),
                     facecolor=fig.get_facecolor(), bbox_inches='tight')
-        plt.show()
 
     def save(self, eval_reward, train_reward):
         mode = "online" if self.online else "offline"
