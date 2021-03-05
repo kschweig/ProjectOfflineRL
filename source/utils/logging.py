@@ -5,6 +5,10 @@ import matplotlib.pyplot as plt
 
 
 class TrainLogger():
+    """
+    Kind of a custom SummaryWriter, I could of course use Tensorboard
+    and actually do so in the follow up project
+    """
 
     def __init__(self, agent, params, run, online):
         self.agent = agent

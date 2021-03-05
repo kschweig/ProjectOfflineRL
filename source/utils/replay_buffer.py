@@ -1,10 +1,11 @@
-import os
+import osthere is quite some overhead to safe datasets as efficient then
 import numpy as np
 import torch
 from source.utils.atari_wrapper import make_env
 
 
 class ReplayBuffer(object):
+
     def __init__(self, params):
         self.batch_size = params.batch_size
         self.max_size = int(params.buffer_size)
@@ -25,6 +26,9 @@ class ReplayBuffer(object):
         self.first_timestep = np.zeros(self.max_size, dtype=np.uint8)
 
     def full(self):
+        """
+        returns True if buffer is at full capacity
+        """
         return self.idx == self.max_size - 1
 
     def add(self, state, action, next_state, reward, done, env_done, first_timestep):
@@ -47,7 +51,7 @@ class ReplayBuffer(object):
             self.batch_size = batch_size
         ind = np.random.randint(0, self.current_size, size=self.batch_size)
 
-        # Note + is concatenate here
+        # + is concatenate here
         state = np.zeros(((self.batch_size, self.state_history) + self.state.shape[1:]), dtype=np.uint8)
         next_state = np.array(state)
 
@@ -63,7 +67,7 @@ class ReplayBuffer(object):
                 j = ind - i
                 k = (ind - i + 1).clip(min=0)
                 # If j == -1, then we set state_not_done to 0.
-                state_not_done *= (j + 1).clip(min=0, max=1).reshape(-1, 1, 1)  # np.where(j < 0, state_not_done * 0, state_not_done)
+                state_not_done *= (j + 1).clip(min=0, max=1).reshape(-1, 1, 1)
                 j = j.clip(min=0)
 
             # State should be all 0s if the episode terminated previously
@@ -128,7 +132,8 @@ class DatasetGenerator():
     """
     Utility class, that holds a replay buffer and handles dataset generation
     by the online agent. Not most efficient way, better would be to store as hdf5,
-    but there is quite some overhead to safe datasets as efficient then.
+    but as I built upon an existing buffer solution, this will be done in the follow-up
+    project as it works as is, just not that efficient.
     """
 
     def __init__(self, params):

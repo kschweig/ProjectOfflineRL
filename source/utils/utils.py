@@ -34,6 +34,9 @@ class ParameterManager():
 
 
 class Configuration():
+    """
+    Convenience class to access experiment parameters
+    """
 
     def __init__(self, file: str, dictionary: dict()):
         self.file = file
@@ -55,6 +58,9 @@ class Configuration():
 
 
 def load_config(file):
+    """
+    Parsing configuration files
+    """
 
     config = dict()
 
@@ -86,6 +92,9 @@ def load_config(file):
 
 
 class bcolors:
+    """
+    Custom colors for command line warnings
+    """
     HEADER = '\033[95m'
     OKBLUE = '\033[94m'
     OKCYAN = '\033[96m'
@@ -98,5 +107,8 @@ class bcolors:
 
 
 def entropy(values):
+    """
+    Calculate entropy of given action-values
+    """
     probs = F.softmax(values, dim=1).detach().cpu().numpy()
     return -np.sum(probs * np.log(probs))
