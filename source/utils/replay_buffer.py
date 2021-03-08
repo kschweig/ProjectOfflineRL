@@ -1,4 +1,4 @@
-import osthere is quite some overhead to safe datasets as efficient then
+import os
 import numpy as np
 import torch
 from source.utils.atari_wrapper import make_env
@@ -142,10 +142,10 @@ class DatasetGenerator():
         self.replay_buffer = ReplayBuffer(params)
         self.number = 0
 
-        self.done = False
         self.reset()
 
     def reset(self):
+        self.done = False
         self.low_p = False
         if np.random.uniform(0, 1) < self.params.low_noise_p:
             self.low_p = True
@@ -157,13 +157,13 @@ class DatasetGenerator():
         for step in range(steps):
             self.episode_timestep += 1
 
+            if self.episode_timestep >= self.env._max_episode_steps:
+                self.done = True
+
             if self.done:
                 self.reset()
 
-            if self.episode_timestep >= self.env._max_episode_steps:
-                self.done = False
-
-            # if we are in low prob episode, generate
+            # some episodes take low eps, some high eps for exploration of state space
             if self.low_p:
                 eps = self.params.eval_eps
             else:
@@ -172,10 +172,15 @@ class DatasetGenerator():
             # take action
             action, _, _ = agent.policy(self.state, eval=True, eps=eps)
 
+            # take step
             next_state, reward, self.done, _ = self.env.step(action)
 
+            # save in buffer
             self.replay_buffer.add(self.state, action, next_state, reward, float(self.done), self.done, self.episode_start)
-            self.episode_start = False
+
+            # set state and episode start
+            self.state = next_state
+            if self.episode_start: self.episode_start = False
 
             # if buffer is full, just save to disk and create a new one
             if self.replay_buffer.full():
