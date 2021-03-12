@@ -29,7 +29,7 @@ class ReplayBuffer(object):
         """
         returns True if buffer is at full capacity
         """
-        return self.idx == self.max_size - 1
+        return self.current_size == self.max_size
 
     def add(self, state, action, next_state, reward, done, env_done, first_timestep):
         # If dones don't match, env has reset due to timelimit

@@ -49,12 +49,13 @@ def online(params):
     highest_reward_eval = 0
     episode_rewards = deque(maxlen=params.eval_iters)
     highest_reward_behavioral = 0
+    # steps taken when generating trajectories
+    steps = params.max_timesteps // params.policies
 
     # Interact with the environment for max_timesteps
     for t in tqdm(range(params.max_timesteps)):
 
         episode_timestep += 1
-        episode_start = False
 
         # every k episodes, policy gets evaluated
         if (t+1) % params.eval_freq == 0:
@@ -96,6 +97,8 @@ def online(params):
         if t >= params.start_timesteps and (t + 1) % params.train_freq == 0:
             agent.train(replay_buffer)
 
+        episode_start = False
+
         # clean up upon episode end
         if done:
             # Reset environment
@@ -113,8 +116,7 @@ def online(params):
             episode_num += 1
 
         # generate dataset for offline agents, setup from Fujimoto et al. 2019 (Benchmarking Batch DRL)
-        steps = params.max_timesteps // params.policies
-        if (t+1) % steps == 0 and not params.use_train_buffer:
+        if not params.use_train_buffer and (t+1) % steps == 0:
             dataset.gen_data(steps, agent)
 
     # once finished, safe final policy
@@ -268,8 +270,6 @@ if __name__ == "__main__":
     # create folders to store
     if not os.path.exists(os.path.join("results", config.experiment)):
         os.makedirs(os.path.join("results", config.experiment))
-    #if not os.path.exists(os.path.join("results", config.experiment, "plots")):
-    #    os.makedirs(os.path.join("results", config.experiment, "plots"))
 
     if not os.path.exists(os.path.join("data", config.experiment)):
         os.makedirs(os.path.join("data", config.experiment))
