@@ -2,7 +2,7 @@
 
 This project work was executed as part of the masters curriculum "Artifical Intelligence"
 at Johannes Kepler University Linz (Institute of Machine Learning) for the course
-"Practical work in AI - . This work aims to compare
+"Practical work in AI (365.207)". This work aims to compare
 two different recent publication in the realm of Offline Reinforcement Learning,
 that reported very different results for standard off-policy algorithms on the 
 Atari Environment ([Bellemare et al., 2012](https://arxiv.org/abs/1207.4708)).
@@ -63,7 +63,7 @@ get incremented after each run.
 
 ### Test the Agents
 
-Testing the agent is pretty simple, the agent is simply visualized for a single episode. Further,
+Testing the agent by [test.py](./test.py) is pretty simple, the agent is just visualized for a single episode. Further,
 a coverage estimate for the state space can be done. Both is handled by the following parameters:
 
     --online            Use the online version of the agent
