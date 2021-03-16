@@ -31,7 +31,7 @@ def get_info(config):
     return (eval, behavioral)
 
 
-experiments = ["breakout_agarwal", "breakout_fujimoto_2500000", "breakout_fujimoto_25000", "breakout_fujimoto_1"]
+experiments = ["breakout_agarwal", "breakout_fujimoto_2500000", "breakout_fujimoto_25000","breakout_fujimoto_250", "breakout_fujimoto_1"]
 algos = ["DQN", "QRDQN", "REM", "BCQ"]
 
 
@@ -128,7 +128,7 @@ for experiment in experiments:
 """
 Ablation study
 """
-labels = ["ER buffer", "2.500.000 policies", "25.000 policies", "1 policy"]
+labels = ["ER buffer", "2.500.000 policies", "25.000 policies", "250 policies", "1 policy"]
 
 for algo in range(len(algos)):
 
