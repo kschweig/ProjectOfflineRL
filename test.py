@@ -55,7 +55,7 @@ if __name__ == "__main__":
     if params.coverage:
         samples = 10000
         num_ds = math.ceil(params.max_timesteps / params.buffer_size)
-        states, rewards = [],[]
+        states, rewards, all_rewards, dones = [], [], [],[]
 
         for ds in tqdm(range(num_ds), desc="loading samples"):
             replay_buffer = ReplayBuffer(params)
@@ -65,23 +65,16 @@ if __name__ == "__main__":
             state, _, _, reward, _ = replay_buffer.sample(batch_size=samples//num_ds)
             states.append(state)
             rewards.append(reward)
+            all_rewards.extend(replay_buffer.reward.tolist())
+            dones.extend((1 - replay_buffer.not_done).tolist())
 
         estimate_randenc(torch.cat(states, dim=0), torch.cat(rewards, dim=0), params, k=10, mesh=int(np.sqrt(samples)))
         estimate_sklearn(torch.cat(states, dim=0), torch.cat(rewards, dim=0), params, mesh=int(np.sqrt(samples)))
 
-        rewards, dones = [], []
-        for ds in tqdm(range(num_ds), desc="loading samples"):
-            replay_buffer = ReplayBuffer(params)
-            path = os.path.join("data", params.experiment, "dataset", "ds")
-            replay_buffer.load(path, ds)
-
-            rewards.extend(replay_buffer.reward.tolist())
-            dones.extend((1 - replay_buffer.not_done).tolist())
-
         print("episodes:", np.sum(dones))
         print("episode length:", len(dones) / np.sum(dones))
-        print("total reward", np.sum(rewards))
-        print("mean reward:", np.sum(rewards) / np.sum(dones))
+        print("total reward", np.sum(all_rewards))
+        print("mean reward:", np.sum(all_rewards) / np.sum(dones))
 
         gen_hist(dones, params)
 
