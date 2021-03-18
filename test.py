@@ -12,7 +12,7 @@ from source.agents.qrdqn import QRDQN
 from source.agents.bcq import BCQ
 from source.agents.rem import REM
 from source.agents.random import Random
-from source.utils.state_estimation import estimate_randenc, estimate_sklearn
+from source.utils.state_estimation import estimate_randenc, estimate_sklearn, gen_hist
 from source.utils.replay_buffer import ReplayBuffer
 
 
@@ -68,6 +68,22 @@ if __name__ == "__main__":
 
         estimate_randenc(torch.cat(states, dim=0), torch.cat(rewards, dim=0), params, k=10, mesh=int(np.sqrt(samples)))
         estimate_sklearn(torch.cat(states, dim=0), torch.cat(rewards, dim=0), params, mesh=int(np.sqrt(samples)))
+
+        rewards, dones = [], []
+        for ds in tqdm(range(num_ds), desc="loading samples"):
+            replay_buffer = ReplayBuffer(params)
+            path = os.path.join("data", params.experiment, "dataset", "ds")
+            replay_buffer.load(path, ds)
+
+            rewards.extend(replay_buffer.reward.tolist())
+            dones.extend((1 - replay_buffer.not_done).tolist())
+
+        print("episodes:", np.sum(dones))
+        print("episode length:", len(dones) / np.sum(dones))
+        print("total reward", np.sum(rewards))
+        print("mean reward:", np.sum(rewards) / np.sum(dones))
+
+        gen_hist(dones, params)
 
     # else we show performance in environment
     else:

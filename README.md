@@ -85,5 +85,7 @@ Show the last policy of online DQN in the "experiment" configuration, --run 2 wo
 
     python test.py --coverage
 
-Estimates the coverage of the dataset, plots are found in [results](results) folder.
+Estimates the coverage of the dataset, plots are found in [results](results) folder. There is acutally more information 
+printed than what I discussed in the report, which is due to a lack of theoretical justification, but I found the results
+interesting nevertheless.
     

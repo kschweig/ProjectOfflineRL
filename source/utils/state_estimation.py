@@ -50,6 +50,8 @@ def estimate_randenc(states: torch.Tensor, reward: torch.Tensor, params, k=5, me
     print(f"{params.experiment} dataset has mean distance to its {k} nearest neighbours of "
           f"{round(np.mean(distances), 6)}")
 
+    print(f"Random Encoder State Projection, Mean: {np.mean(states, axis=0)}, Std: {np.std(states, axis=0)}")
+
     # density measure
     occupied = np.zeros((mesh, mesh))
     step = 1.5 / mesh
@@ -62,9 +64,7 @@ def estimate_randenc(states: torch.Tensor, reward: torch.Tensor, params, k=5, me
 
     print(f"{params.experiment} dataset has a density (Random Encoder) of {round(np.sum(occupied) / mesh**2, 4)}")
 
-    print(f"Mean: {np.mean(states, axis=0)}, Std: {np.std(states, axis=0)}")
-
-    plot(states, reward, "Random-Encoder", params.experiment, limit=True)
+    plot(states, reward, params, "Random-Encoder", params.experiment, limit=False)
 
 
 def estimate_sklearn(states: torch.Tensor, reward: torch.Tensor, params, mesh=100, seed=42):
@@ -73,7 +73,7 @@ def estimate_sklearn(states: torch.Tensor, reward: torch.Tensor, params, mesh=10
 
     pca = PCA(n_components=2, random_state=seed)
     x_pca = pca.fit_transform(states)
-    plot(x_pca, reward, "PCA", params.experiment, limit=False)
+    plot(x_pca, reward, params, "PCA", params.experiment, limit=False)
 
     # density measure
     occupied = np.zeros((mesh, mesh))
@@ -95,9 +95,9 @@ def estimate_sklearn(states: torch.Tensor, reward: torch.Tensor, params, mesh=10
     # use low number of neighbours to preserve local structure
     umap = UMAP(n_components=2, n_neighbors=20, random_state=seed)
 
-    #x_umap = pca.fit_transform(states)
-    x_umap = umap.fit_transform(states)
-    plot(x_umap, reward, "UMAP", params.experiment, limit=False)
+    x_umap = pca.fit_transform(states)
+    x_umap = umap.fit_transform(x_umap)
+    plot(x_umap, reward, params, "UMAP", params.experiment, limit=False)
 
     # density measure
     occupied = np.zeros((mesh, mesh))
@@ -113,7 +113,7 @@ def estimate_sklearn(states: torch.Tensor, reward: torch.Tensor, params, mesh=10
     print(f"{params.experiment} dataset has a density (UMAP) of {round(np.sum(occupied) / mesh ** 2, 4)}")
 
 
-def plot(dim2_states: np.ndarray, y: np.ndarray, method: str, config: str, limit=False):
+def plot(dim2_states: np.ndarray, y: np.ndarray, params, method: str, config: str, limit=False):
 
     # plot no more than 2000 points
     rng = np.random.default_rng(42)
@@ -129,10 +129,32 @@ def plot(dim2_states: np.ndarray, y: np.ndarray, method: str, config: str, limit
             color.append("C1")
 
     plt.figure()
-    plt.title("Embedded Projection using "+method)
+    plt.title("ER Buffer" if params.use_train_buffer else "{:,}".format(params.policies).replace(",", " ") + " policies")
     plt.scatter(dim2_states[:,0], dim2_states[:,1], c=color, s=5, linewidths=0)
     if limit:
         plt.xlim(left=0.5, right=2)
         plt.ylim(bottom=0.5, top=2)
-    plt.savefig(os.path.join("results", config, "projection_"+method+".pdf"))
-    plt.show()
+    plt.ylabel("dim 1")
+    plt.xlabel("dim 2")
+    plt.savefig(os.path.join("results", config, "projection_"+method+".pdf"), bbox_inches='tight')
+    #plt.show()
+
+
+def gen_hist(dones:list, params):
+    lengths = []
+    length = 0
+    for d in np.asarray(dones).flatten().tolist():
+        if d < 1.:
+            length += 1
+        else:
+            if length <= 2000: lengths.append(length)
+            length = 0
+
+    plt.figure()
+    plt.hist(x=lengths, bins=100)
+    plt.title("ER Buffer" if params.use_train_buffer else "{:,}".format(params.policies).replace(",", " ") + " policies")
+    plt.xlabel("Episode length")
+    plt.ylabel("Counts")
+    plt.xlim(left=0)
+    plt.savefig(os.path.join("results", params.experiment, "eplength_hist.pdf"), bbox_inches='tight')
+    #plt.show()

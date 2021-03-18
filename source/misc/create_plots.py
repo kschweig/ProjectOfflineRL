@@ -81,7 +81,7 @@ for experiment in experiments:
     plt.xlabel("Training steps")
     plt.legend(loc='upper center', bbox_to_anchor=(0.5, 1.12), fancybox=True,
                shadow=True, ncol=5, frameon=True, handlelength=1)
-    plt.savefig(os.path.join("results", "presentation", f"{experiment}.{img_type}"), bbox_inches='tight')
+    plt.savefig(os.path.join("results", "presentation", f"{experiment}.{img_type}"))
     plt.show()
 
 
