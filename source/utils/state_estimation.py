@@ -155,6 +155,7 @@ def gen_hist(dones:list, params):
     plt.title("ER Buffer" if params.use_train_buffer else "{:,}".format(params.policies).replace(",", " ") + " policies")
     plt.xlabel("Episode length")
     plt.ylabel("Counts")
+    plt.ylim(bottom=0, top=890)
     plt.xlim(left=0)
     plt.savefig(os.path.join("results", params.experiment, "eplength_hist.pdf"), bbox_inches='tight')
     #plt.show()

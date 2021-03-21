@@ -12,7 +12,7 @@ matplotlib.rc('ytick', labelsize=12)
 matplotlib.rc('axes', labelsize=16)
 matplotlib.rc('legend', fontsize=12)
 
-img_type = "png"
+img_type = "pdf"
 
 
 def load_result(config, agent, online, run):
@@ -115,7 +115,7 @@ for experiment in experiments:
             plt.plot(results[algo,0,:,0], est, label=algos[algo])
     plt.xticks(range(0, 10010000, 1000000))
     plt.xlim(left=-100000, right=10100000)
-    plt.ylim(bottom=-0.1, top=10.1)
+    plt.ylim(bottom=-0.1, top=7.1)
     ax = plt.gca()
     ax.ticklabel_format(axis='x', style='sci', scilimits=(6,6))
     plt.ylabel("Value estimate")
@@ -158,7 +158,7 @@ for algo in range(len(algos)):
             plt.plot(results[i,0,:,0], est, label=labels[i])
     plt.xticks(range(0, 10010000, 1000000))
     plt.xlim(left=-100000, right=10100000)
-    plt.ylim(bottom=-2, top=46)
+    plt.ylim(bottom=-2, top=56)
     #plt.title(algos[algo], loc='center', fontsize=18)
     ax = plt.gca()
     ax.set_title(algos[algo], y=1.0, pad=-30, fontsize=20, fontweight="bold")
