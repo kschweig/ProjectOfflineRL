@@ -33,6 +33,7 @@ def get_info(config):
 
 experiments = ["breakout_agarwal", "breakout_fujimoto_2500000", "breakout_fujimoto_25000","breakout_fujimoto_250", "breakout_fujimoto_1"]
 algos = ["DQN", "QRDQN", "REM", "BCQ"]
+labels = ["ER buffer", "2 500 000 policies", "25 000 policies", "250 policies", "1 policy"]
 
 
 """
@@ -48,7 +49,7 @@ online = np.stack(online, axis=0)
 """
 First, compare all experiments in breakout_agarwal and fujimoto_2500000
 """
-for experiment in experiments:
+for e, experiment in enumerate(experiments):
 
     results = []
     for algo in algos:
@@ -75,7 +76,9 @@ for experiment in experiments:
         plt.plot(results[algo,0,:,0], est, label=algos[algo])
     plt.xticks(range(0, 10010000, 1000000))
     plt.xlim(left=-100000, right=10100000)
+    plt.ylim(bottom=-2, top=56)
     ax = plt.gca()
+    ax.set_title(labels[e], y=1.0, pad=-30, fontsize=20, fontweight="bold")
     ax.ticklabel_format(axis='x', style='sci', scilimits=(6,6))
     plt.ylabel("Reward")
     plt.xlabel("Training steps")
@@ -89,7 +92,7 @@ for experiment in experiments:
 Value estimates
 """
 
-for experiment in experiments:
+for e, experiment in enumerate(experiments):
 
     results = []
     for algo in algos:
@@ -117,6 +120,7 @@ for experiment in experiments:
     plt.xlim(left=-100000, right=10100000)
     plt.ylim(bottom=-0.1, top=7.1)
     ax = plt.gca()
+    ax.set_title(labels[e], y=1.0, pad=-30, fontsize=20, fontweight="bold")
     ax.ticklabel_format(axis='x', style='sci', scilimits=(6,6))
     plt.ylabel("Value estimate")
     plt.xlabel("Training steps")
@@ -128,7 +132,6 @@ for experiment in experiments:
 """
 Ablation study
 """
-labels = ["ER buffer", "2.500.000 policies", "25.000 policies", "250 policies", "1 policy"]
 
 for algo in range(len(algos)):
 
