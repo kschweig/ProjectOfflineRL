@@ -10,7 +10,7 @@ Atari Environment ([Bellemare et al., 2012](https://arxiv.org/abs/1207.4708)).
 While [Agarwal et al., 2020](https://arxiv.org/abs/1907.04543) reported very optimistic results,
 [Fujimoto et al., 2019](https://arxiv.org/abs/1910.01708) reported very pessimistic results.
 I hypothesized, that the main difference between the two works is how they generated the dataset,
-the offline agent is trained on. For further information, please refer to my [report]().
+the offline agent is trained on. For further information, please refer to my [report](./report.pdf).
 
 ### Prerequisites
 
